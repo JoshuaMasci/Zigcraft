@@ -14,10 +14,16 @@ pub const Mesh = struct {
     vertex_buffer: c.GLuint,
     index_buffer: c.GLuint,
 
-    //pub fn init(vertices: []const Vertex, indices: []const u32) Self {
-    pub fn init() Self {
+    //TODO: compiletime types for vertex and index(index may not need to be compiletime since it is u16 or u32)
+    pub fn init(vertices: []const Vertex, indices: []const u32) Self {
         var buffers: [2]c.GLuint = undefined;
         c.glGenBuffers(buffers.len, &buffers);
+
+        c.glBindBuffer(c.GL_ARRAY_BUFFER, buffers[0]);
+        c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(c_longlong, @sizeOf(Vertex) * vertices.len), @ptrCast(*const c_void, vertices.ptr), c.GL_STATIC_DRAW);
+
+        c.glBindBuffer(c.GL_ARRAY_BUFFER, buffers[1]);
+        c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(c_longlong, @sizeOf(u32) * indices.len), @ptrCast(*const c_void, indices.ptr), c.GL_STATIC_DRAW);
 
         return Self {
             .vertex_buffer = buffers[0],

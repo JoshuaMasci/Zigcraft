@@ -17,6 +17,17 @@ pub fn main() !void {
     var window = glfw.Window.init(1920, 1080, "ZigCraft V0.1");
     defer window.deinit();
 
+    var vertices = [_]opengl.Vertex {
+        opengl.Vertex {
+            .position = [_]f32{0.0, 0.0, 0.0},
+            .color = [_]f32{0.0, 0.0, 0.0},
+        },
+    };
+    var indices = [_]u32{0, 0, 0, 0};
+
+    var mesh = opengl.Mesh.init(&vertices, &indices);
+    defer mesh.deinit();
+
     var frameCount: u32 = 0;
     var lastTime = glfw.getTime();
     while (window.shouldClose()) {

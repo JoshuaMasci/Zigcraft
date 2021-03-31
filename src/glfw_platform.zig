@@ -47,7 +47,7 @@ pub const Window = struct {
             panic("Failed to initialise GLAD\n", .{});
         }
 
-        c.glClearColor(0.7, 0.1, 0.85, 1.0);
+        c.glClearColor(0.0, 0.0, 0.0, 1.0);
         c.glfwSwapInterval(1);
 
         return Self{ .handle = handle };
@@ -59,8 +59,8 @@ pub const Window = struct {
 
     pub fn refresh(self: *Self) void {
 
-        c.glClear(c.GL_COLOR_BUFFER_BIT | c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT);
         c.glfwSwapBuffers(self.handle);
+        c.glClear(c.GL_COLOR_BUFFER_BIT | c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT);
     }
 
     pub fn shouldClose(self: *Self) bool {

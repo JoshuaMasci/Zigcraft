@@ -9,6 +9,20 @@ fn errorCallback(err: c_int, description: [*c]const u8) callconv(.C) void {
     panic("Error: {}\n", .{@as([*:0]const u8, description)});
 }
 
+pub const Vertex = struct {
+    const Self = @This();
+
+    position: [3]f32,
+    color: [3]f32,
+
+    fn new( position: [3]f32, color: [3]f32)Self {
+        return Self {
+            .position = position,
+            .color = color,
+        };
+    }
+};
+
 pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
 
@@ -18,27 +32,19 @@ pub fn main() !void {
     var window = glfw.Window.init(1920, 1080, "ZigCraft V0.1");
     defer window.deinit();
 
-    var vertex_code = [_]u8{};
-    var fragment_code = [_]u8{};
-    var shader = opengl.Shader.init(&vertex_code, &fragment_code);
+    var vertex_code = @embedFile("vert.glsl");
+    var fragment_code =  @embedFile("frag.glsl");
+    var shader = opengl.Shader.init(vertex_code, fragment_code);
     defer shader.deinit();
 
-
-    var vertices = [_]opengl.Vertex {
-        opengl.Vertex {
-            .position = [_]f32{0.0, 0.0, 0.0},
-            .color = [_]f32{0.0, 0.0, 0.0},
-        },
+    var vertices = [_]Vertex {
+        Vertex.new([_]f32{-1.0, -1.0, 0.0}, [_]f32{1.0, 0.0, 0.0}),
+        Vertex.new([_]f32{1.0, -1.0, 0.0},  [_]f32{0.0, 1.0, 0.0}),
+        Vertex.new([_]f32{0.0, 1.0, 0.0},   [_]f32{0.0, 0.0, 1.0}),
     };
     var indices = [_]u32{0, 1, 2};
 
-    var pos_verts = [_]f32{    
-    -0.5, -0.5, 0.0,
-     0.5, -0.5, 0.0,
-     0.0,  0.5, 0.0};
-
-    var mesh = opengl.Mesh.init(f32, &pos_verts, &indices);
-    //var mesh = opengl.Mesh.init(opengl.Vertex, &vertices, &indices);
+    var mesh = opengl.Mesh.init(Vertex, &vertices, &indices);
     defer mesh.deinit();
 
     var frameCount: u32 = 0;
@@ -46,10 +52,18 @@ pub fn main() !void {
     while (window.shouldClose()) {
         glfw.update();
 
+        c.glUseProgram(shader.shader_program);
+
+        c.glBindVertexArray(mesh.vao);
         c.glBindBuffer(c.GL_ARRAY_BUFFER, mesh.vertex_buffer);
-        c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, 3 * @sizeOf(f32), null);
-        c.glEnableVertexAttribArray(0);  
-        c.glDrawArrays(c.GL_TRIANGLES, 0, 3);
+        c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, mesh.index_buffer);
+
+        c.glEnableVertexAttribArray(0);
+        c.glEnableVertexAttribArray(1);
+        c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, @sizeOf(Vertex), null);
+        c.glVertexAttribPointer(1, 3, c.GL_FLOAT, c.GL_FALSE, @sizeOf(Vertex), @intToPtr(*const c_void, @byteOffsetOf(Vertex, "color")));
+
+        c.glDrawElements(c.GL_TRIANGLES, 3, c.GL_UNSIGNED_INT, null);
 
         window.refresh();
 

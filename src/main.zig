@@ -1,9 +1,15 @@
 const std = @import("std");
 const panic = std.debug.panic;
 
+//Core types
+usingnamespace @import("zalgebra");
+usingnamespace @import("camera.zig");
+
 const c = @import("c.zig");
 const glfw = @import("glfw_platform.zig");
 const opengl = @import("opengl_renderer.zig");
+
+const world_chunks = @import("chunk_data.zig");
 
 fn errorCallback(err: c_int, description: [*c]const u8) callconv(.C) void {
     panic("Error: {}\n", .{@as([*:0]const u8, description)});
@@ -12,11 +18,11 @@ fn errorCallback(err: c_int, description: [*c]const u8) callconv(.C) void {
 pub const Vertex = struct {
     const Self = @This();
 
-    position: [3]f32,
-    color: [3]f32,
+    position: vec3,
+    color: vec3,
 
-    fn new( position: [3]f32, color: [3]f32)Self {
-        return Self {
+    fn new(position: vec3, color: vec3) Self {
+        return Self{
             .position = position,
             .color = color,
         };
@@ -24,6 +30,12 @@ pub const Vertex = struct {
 };
 
 pub fn main() !void {
+   {
+        var chunk = world_chunks.ChunkData32.init();
+        chunk.setBlock(0, 0, 0, 1);
+        var id = chunk.getBlock(0, 0, 0);
+   }
+
     const stdout = std.io.getStdOut().writer();
 
     glfw.init(errorCallback);
@@ -32,17 +44,19 @@ pub fn main() !void {
     var window = glfw.Window.init(1920, 1080, "ZigCraft V0.1");
     defer window.deinit();
 
+    var camera = Camera.init(64.0, 0.1, 1000.0);
+
     var vertex_code = @embedFile("vert.glsl");
-    var fragment_code =  @embedFile("frag.glsl");
+    var fragment_code = @embedFile("frag.glsl");
     var shader = opengl.Shader.init(vertex_code, fragment_code);
     defer shader.deinit();
 
-    var vertices = [_]Vertex {
-        Vertex.new([_]f32{-1.0, -1.0, 0.0}, [_]f32{1.0, 0.0, 0.0}),
-        Vertex.new([_]f32{1.0, -1.0, 0.0},  [_]f32{0.0, 1.0, 0.0}),
-        Vertex.new([_]f32{0.0, 1.0, 0.0},   [_]f32{0.0, 0.0, 1.0}),
+    var vertices = [_]Vertex{
+        Vertex.new(vec3.new(-1.0, -1.0, -1.0), vec3.new(1.0, 0.0, 0.0)),
+        Vertex.new(vec3.new(1.0, -1.0, -1.0), vec3.new(0.0, 1.0, 0.0)),
+        Vertex.new(vec3.new(0.0, 1.0, -1.0), vec3.new(0.0, 0.0, 1.0)),
     };
-    var indices = [_]u32{0, 1, 2};
+    var indices = [_]u32{ 0, 1, 2 };
 
     var mesh = opengl.Mesh.init(Vertex, &vertices, &indices);
     defer mesh.deinit();
@@ -53,6 +67,9 @@ pub fn main() !void {
         glfw.update();
 
         c.glUseProgram(shader.shader_program);
+
+        var projection_matrix = camera.getPerspective(1920.0 / 1080.0);
+        c.glUniformMatrix4fv(0, 1, c.GL_FALSE, projection_matrix.get_data());
 
         c.glBindVertexArray(mesh.vao);
         c.glBindBuffer(c.GL_ARRAY_BUFFER, mesh.vertex_buffer);
@@ -87,4 +104,3 @@ pub fn main() !void {
 
     try stdout.print("Hello, {s}!\n", .{"world"});
 }
-

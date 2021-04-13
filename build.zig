@@ -1,5 +1,7 @@
-const Builder = @import("std").build.Builder;
 const builtin = @import("builtin");
+const std = @import("std");
+const Builder = std.build.Builder;
+const Pkg = std.build.Pkg;
 
 pub fn build(b: *Builder) void {
     const mode = b.standardReleaseOptions();
@@ -8,6 +10,13 @@ pub fn build(b: *Builder) void {
 
     exe.setBuildMode(mode);
     exe.install();
+
+    //zalgebra
+    const zalgebra = Pkg {
+        .name = "zalgebra",
+        .path = "zalgebra/src/main.zig"
+    };
+    exe.addPackage(zalgebra);
 
     //glfw
     exe.addIncludeDir("C:/zig_glfw/include");

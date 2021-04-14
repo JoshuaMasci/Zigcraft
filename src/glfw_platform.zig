@@ -50,6 +50,10 @@ pub const Window = struct {
         c.glClearColor(0.0, 0.0, 0.0, 1.0);
         c.glfwSwapInterval(1);
 
+        c.glFrontFace(c.GL_CW);
+        c.glEnable(c.GL_CULL_FACE);
+        c.glCullFace(c.GL_BACK);
+
         return Self{ .handle = handle };
     }
 

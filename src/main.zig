@@ -30,6 +30,37 @@ pub const Vertex = struct {
     }
 };
 
+fn createCubeMesh() opengl.Mesh {
+    var cube_vertices = [_]vec3{
+        vec3.new(0.5,  0.5,  0.5),
+        vec3.new(0.5,  0.5, -0.5),
+        vec3.new(0.5, -0.5,  0.5),
+        vec3.new(0.5, -0.5, -0.5),
+        vec3.new(-0.5,  0.5,  0.5),
+        vec3.new(-0.5,  0.5, -0.5),
+        vec3.new(-0.5, -0.5,  0.5),
+        vec3.new(-0.5, -0.5, -0.5),
+    };
+
+    //uvs being used as colors for now
+    var cube_uvs = [_]vec3{
+        vec3.new(0.0, 0.0, 0),
+        vec3.new(0.0, 1.0, 0),
+        vec3.new(1.0, 0.0, 0),
+        vec3.new(1.0, 1.0, 0),
+    };
+
+    var vertices = [_]Vertex{
+    Vertex.new(vec3.new(-1.0, -1.0, 0.0), vec3.new(1.0, 0.0, 0.0)),
+    Vertex.new(vec3.new(1.0, -1.0, 0.0), vec3.new(0.0, 1.0, 0.0)),
+    Vertex.new(vec3.new(0.0, 1.0, 0.0), vec3.new(0.0, 0.0, 1.0)),
+    };
+    
+    var indices = [_]u32{ 0, 1, 2 };
+
+    return opengl.Mesh.init(Vertex, &vertices, &indices);
+}
+
 pub fn main() !void {
    {
         var chunk = world_chunks.ChunkData32.init();
@@ -53,15 +84,8 @@ pub fn main() !void {
     var shader = opengl.Shader.init(vertex_code, fragment_code);
     defer shader.deinit();
 
-    var vertices = [_]Vertex{
-        Vertex.new(vec3.new(-1.0, -1.0, 0.0), vec3.new(1.0, 0.0, 0.0)),
-        Vertex.new(vec3.new(1.0, -1.0, 0.0), vec3.new(0.0, 1.0, 0.0)),
-        Vertex.new(vec3.new(0.0, 1.0, 0.0), vec3.new(0.0, 0.0, 1.0)),
-    };
-    var indices = [_]u32{ 0, 1, 2 };
-
     var mesh_transform = Transform.zero(); mesh_transform.move(vec3.new(0.0, 0.0, -3.0));
-    var mesh = opengl.Mesh.init(Vertex, &vertices, &indices);
+    var mesh = createCubeMesh();
     defer mesh.deinit();
 
     //Uniform Indexes

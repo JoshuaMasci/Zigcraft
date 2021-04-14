@@ -52,7 +52,7 @@ fn createCubeMesh() opengl.Mesh {
 
     var vertices = [_]Vertex{
     Vertex.new(vec3.new(-1.0, -1.0, 0.0), vec3.new(1.0, 0.0, 0.0)),
-    Vertex.new(vec3.new(1.0, -1.0, 0.0), vec3.new(0.0, 1.0, 0.0)),
+    Vertex.new(vec3.new(2.0, -1.0, 0.0), vec3.new(0.0, 1.0, 0.0)),
     Vertex.new(vec3.new(0.0, 1.0, 0.0), vec3.new(0.0, 0.0, 1.0)),
     };
     
@@ -84,7 +84,7 @@ pub fn main() !void {
     var shader = opengl.Shader.init(vertex_code, fragment_code);
     defer shader.deinit();
 
-    var mesh_transform = Transform.zero(); mesh_transform.move(vec3.new(0.0, 0.0, -3.0));
+    var mesh_transform = Transform.zero(); mesh_transform.move(vec3.new(0.0, 0.0, 3.0));
     var mesh = createCubeMesh();
     defer mesh.deinit();
 
@@ -102,7 +102,8 @@ pub fn main() !void {
         //View Projection Matrix
         var projection_matrix = camera.getPerspective(1920.0 / 1080.0);
         var view_matrix = camera_transform.getViewMatrix();
-        c.glUniformMatrix4fv(view_projection_matrix_index, 1, c.GL_FALSE, view_matrix.mult(projection_matrix).get_data());
+        var view_projection_matrix = mat4.mult(projection_matrix, view_matrix);
+        c.glUniformMatrix4fv(view_projection_matrix_index, 1, c.GL_FALSE, view_projection_matrix.get_data());
 
         //Model Matrix
         var model_matrix = mesh_transform.getModelMatrix();

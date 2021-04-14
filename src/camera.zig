@@ -7,7 +7,7 @@ pub const Camera = struct {
     zNear: f32,
     zFar: f32,
 
-    pub fn init(
+    pub fn new(
         fov: f32,
         zNear: f32,
         zFar: f32,

@@ -4,6 +4,7 @@ const panic = std.debug.panic;
 //Core types
 usingnamespace @import("zalgebra");
 usingnamespace @import("camera.zig");
+usingnamespace @import("transform.zig");
 
 const c = @import("c.zig");
 const glfw = @import("glfw_platform.zig");
@@ -44,7 +45,7 @@ pub fn main() !void {
     var window = glfw.Window.init(1920, 1080, "ZigCraft V0.1");
     defer window.deinit();
 
-    var camera = Camera.init(64.0, 0.1, 1000.0);
+    var camera = Camera.new(64.0, 0.1, 1000.0);
 
     var vertex_code = @embedFile("vert.glsl");
     var fragment_code = @embedFile("frag.glsl");

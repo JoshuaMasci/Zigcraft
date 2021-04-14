@@ -46,6 +46,7 @@ pub fn main() !void {
     defer window.deinit();
 
     var camera = Camera.new(64.0, 0.1, 1000.0);
+    var camera_transform = Transform.zero();
 
     var vertex_code = @embedFile("vert.glsl");
     var fragment_code = @embedFile("frag.glsl");
@@ -53,14 +54,19 @@ pub fn main() !void {
     defer shader.deinit();
 
     var vertices = [_]Vertex{
-        Vertex.new(vec3.new(-1.0, -1.0, -1.0), vec3.new(1.0, 0.0, 0.0)),
-        Vertex.new(vec3.new(1.0, -1.0, -1.0), vec3.new(0.0, 1.0, 0.0)),
-        Vertex.new(vec3.new(0.0, 1.0, -1.0), vec3.new(0.0, 0.0, 1.0)),
+        Vertex.new(vec3.new(-1.0, -1.0, 0.0), vec3.new(1.0, 0.0, 0.0)),
+        Vertex.new(vec3.new(1.0, -1.0, 0.0), vec3.new(0.0, 1.0, 0.0)),
+        Vertex.new(vec3.new(0.0, 1.0, 0.0), vec3.new(0.0, 0.0, 1.0)),
     };
     var indices = [_]u32{ 0, 1, 2 };
 
+    var mesh_transform = Transform.zero(); mesh_transform.move(vec3.new(0.0, 0.0, -3.0));
     var mesh = opengl.Mesh.init(Vertex, &vertices, &indices);
     defer mesh.deinit();
+
+    //Uniform Indexes
+    var view_projection_matrix_index = c.glGetUniformLocation(shader.shader_program, "view_projection_matrix");
+    var model_matrix_index = c.glGetUniformLocation(shader.shader_program, "model_matrix");
 
     var frameCount: u32 = 0;
     var lastTime = glfw.getTime();
@@ -69,8 +75,14 @@ pub fn main() !void {
 
         c.glUseProgram(shader.shader_program);
 
+        //View Projection Matrix
         var projection_matrix = camera.getPerspective(1920.0 / 1080.0);
-        c.glUniformMatrix4fv(0, 1, c.GL_FALSE, projection_matrix.get_data());
+        var view_matrix = camera_transform.getViewMatrix();
+        c.glUniformMatrix4fv(view_projection_matrix_index, 1, c.GL_FALSE, view_matrix.mult(projection_matrix).get_data());
+
+        //Model Matrix
+        var model_matrix = mesh_transform.getModelMatrix();
+        c.glUniformMatrix4fv(model_matrix_index, 1, c.GL_FALSE, model_matrix.get_data());
 
         c.glBindVertexArray(mesh.vao);
         c.glBindBuffer(c.GL_ARRAY_BUFFER, mesh.vertex_buffer);

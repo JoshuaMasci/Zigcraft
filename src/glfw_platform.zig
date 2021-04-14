@@ -66,4 +66,8 @@ pub const Window = struct {
     pub fn shouldClose(self: *Self) bool {
         return c.glfwWindowShouldClose(self.handle) == 0;
     }
+
+    pub fn getHandle(self: *Self) *c.GLFWwindow {
+        return self.handle;
+    }
 };

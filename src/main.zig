@@ -91,8 +91,11 @@ pub fn main() !void {
     var frameCount: u32 = 0;
     var lastTime = glfw.getTime();
     while (glfw.shouldCloseWindow(window)) {
-        glfw.input.update();
         glfw.update();
+
+        if(glfw.input.getKeyDown(c.GLFW_KEY_W)) {
+            mesh_transform.move(vec3.new(0.0, 0.001, 0.0));
+        }
 
         c.glUseProgram(shader.shader_program);
 

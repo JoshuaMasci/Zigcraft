@@ -12,10 +12,6 @@ const opengl = @import("opengl_renderer.zig");
 
 const world_chunks = @import("chunk_data.zig");
 
-fn errorCallback(err: c_int, description: [*c]const u8) callconv(.C) void {
-    panic("Error: {}\n", .{@as([*:0]const u8, description)});
-}
-
 pub const Vertex = struct {
     const Self = @This();
 
@@ -70,11 +66,11 @@ pub fn main() !void {
 
     const stdout = std.io.getStdOut().writer();
 
-    glfw.init(errorCallback);
+    glfw.init();
     defer glfw.deinit();
 
-    var window = glfw.Window.init(1920, 1080, "ZigCraft V0.1");
-    defer window.deinit();
+    var window = glfw.createWindow(1600, 900, "ZigCraft V0.1");
+    defer glfw.destoryWindow(window);
 
     var camera = Camera.new(64.0, 0.1, 1000.0);
     var camera_transform = Transform.zero();
@@ -94,7 +90,8 @@ pub fn main() !void {
 
     var frameCount: u32 = 0;
     var lastTime = glfw.getTime();
-    while (window.shouldClose()) {
+    while (glfw.shouldCloseWindow(window)) {
+        glfw.input.update();
         glfw.update();
 
         c.glUseProgram(shader.shader_program);
@@ -120,7 +117,7 @@ pub fn main() !void {
 
         c.glDrawElements(c.GL_TRIANGLES, 3, c.GL_UNSIGNED_INT, null);
 
-        window.refresh();
+        glfw.refreshWindow(window);
 
         frameCount += 1;
         var currentTime = glfw.getTime();

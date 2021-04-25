@@ -65,7 +65,7 @@ var nextWindowId: WindowId = 0;
 var windowMap: WindowHashMap = undefined;
 pub fn createWindow(width: i32, height: i32, title: [:0]const u8) WindowId {
     var handle = c.glfwCreateWindow(width, height, title, null, null) orelse {
-        panic("Failed to create window\n", .{});
+        panic("Failed to create window", .{});
     };
     c.glfwMakeContextCurrent(handle);
     _ = c.glfwSetKeyCallback(handle, glfwKeyCallback);
@@ -73,7 +73,7 @@ pub fn createWindow(width: i32, height: i32, title: [:0]const u8) WindowId {
     if (nextWindowId == 0) {
         //Load Glad if this is the first window
         if (c.gladLoadGLLoader(@ptrCast(c.GLADloadproc, c.glfwGetProcAddress)) == 0) {
-            panic("Failed to initialise GLAD\n", .{});
+            panic("Failed to initialise GLAD", .{});
         }
     }
 
@@ -93,7 +93,6 @@ pub fn destoryWindow(windowId: WindowId) void {
 pub fn refreshWindow(windowId: WindowId) void {
     if (windowMap.contains(windowId)) {
         c.glfwSwapBuffers(windowMap.get(windowId).?);
-        c.glClear(c.GL_COLOR_BUFFER_BIT | c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT);
     }
 }
 

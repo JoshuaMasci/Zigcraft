@@ -18,11 +18,18 @@ pub const Vertex = struct {
     position: vec3,
     color: vec3,
 
-    fn new(position: vec3, color: vec3) Self {
+    pub fn new(position: vec3, color: vec3) Self {
         return Self{
             .position = position,
             .color = color,
         };
+    }
+
+    pub fn genVao() void {
+        c.glEnableVertexAttribArray(0);
+        c.glEnableVertexAttribArray(1);
+        c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, @sizeOf(Self), null); // Position is at zero
+        c.glVertexAttribPointer(1, 3, c.GL_FLOAT, c.GL_FALSE, @sizeOf(Self), @intToPtr(*const c_void, @byteOffsetOf(Self, "color")));
     }
 };
 
@@ -54,7 +61,7 @@ fn createCubeMesh() opengl.Mesh {
     
     var indices = [_]u32{ 0, 1, 2 };
 
-    return opengl.Mesh.init(Vertex, &vertices, &indices);
+    return opengl.Mesh.init(Vertex, u32, &vertices, &indices);
 }
 
 pub fn main() !void {
@@ -92,9 +99,14 @@ pub fn main() !void {
     var lastTime = glfw.getTime();
     while (glfw.shouldCloseWindow(window)) {
         glfw.update();
+        opengl.init3dRendering();
+        opengl.clearFramebuffer();
 
         if(glfw.input.getKeyDown(c.GLFW_KEY_W)) {
-            mesh_transform.move(vec3.new(0.0, 0.001, 0.0));
+            mesh_transform.move(vec3.new(0.0, 0.01, 0.0));
+        }
+        if(glfw.input.getKeyDown(c.GLFW_KEY_S)) {
+            mesh_transform.move(vec3.new(0.0, -0.01, 0.0));
         }
 
         c.glUseProgram(shader.shader_program);
@@ -109,16 +121,7 @@ pub fn main() !void {
         var model_matrix = mesh_transform.getModelMatrix();
         c.glUniformMatrix4fv(model_matrix_index, 1, c.GL_FALSE, model_matrix.get_data());
 
-        c.glBindVertexArray(mesh.vao);
-        c.glBindBuffer(c.GL_ARRAY_BUFFER, mesh.vertex_buffer);
-        c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, mesh.index_buffer);
-
-        c.glEnableVertexAttribArray(0);
-        c.glEnableVertexAttribArray(1);
-        c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, @sizeOf(Vertex), null);
-        c.glVertexAttribPointer(1, 3, c.GL_FLOAT, c.GL_FALSE, @sizeOf(Vertex), @intToPtr(*const c_void, @byteOffsetOf(Vertex, "color")));
-
-        c.glDrawElements(c.GL_TRIANGLES, 3, c.GL_UNSIGNED_INT, null);
+        mesh.draw();
 
         glfw.refreshWindow(window);
 

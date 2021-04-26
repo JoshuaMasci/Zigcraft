@@ -103,6 +103,17 @@ pub fn shouldCloseWindow(windowId: WindowId) bool {
     return false;
 }
 
+pub fn getWindowSize(windowId: WindowId) [2]i32 {
+    var size: [2]i32 = undefined;
+    if (windowMap.contains(windowId)) {
+        var cSize: [2]c_int = undefined;
+        c.glfwGetFramebufferSize(windowMap.get(windowId).?, &cSize[0], &cSize[1]);
+        size[0] = @intCast(i32, cSize[0]);
+        size[1] = @intCast(i32, cSize[1]);
+    }
+    return size;
+}
+
 pub fn getWindowHandle(self: *Self) *c.GLFWwindow {
     if (windowMap.contains(windowId)) {
         return windowMap.get(windowId).?;

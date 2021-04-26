@@ -1,5 +1,6 @@
 const std = @import("std");
 const panic = std.debug.panic;
+const Allocator = std.mem.Allocator;
 
 //Core types
 usingnamespace @import("zalgebra");
@@ -33,8 +34,20 @@ pub const Vertex = struct {
     }
 };
 
-fn createCubeMesh() opengl.Mesh {
-    var cube_vertices = [_]vec3{
+const CubeFace = enum {
+    x_pos,
+    x_neg,
+    y_pos,
+    y_neg,
+    z_pos,
+    z_neg,
+};
+
+const VertexList = std.ArrayList(Vertex);
+const IndexList = std.ArrayList(u32);
+
+fn appendCubeFace(face: CubeFace, vertices: *VertexList, indices: *IndexList) void {
+    const cube_positions = [_]vec3{
         vec3.new(0.5,  0.5,  0.5),
         vec3.new(0.5,  0.5, -0.5),
         vec3.new(0.5, -0.5,  0.5),
@@ -46,32 +59,87 @@ fn createCubeMesh() opengl.Mesh {
     };
 
     //uvs being used as colors for now
-    var cube_uvs = [_]vec3{
-        vec3.new(0.0, 0.0, 0),
-        vec3.new(0.0, 1.0, 0),
-        vec3.new(1.0, 0.0, 0),
-        vec3.new(1.0, 1.0, 0),
+    const cube_uvs = [_]vec3{
+        vec3.new(0.0, 0.0, 1.0),
+        vec3.new(0.0, 1.0, 1.0),
+        vec3.new(1.0, 0.0, 1.0),
+        vec3.new(1.0, 1.0, 1.0),
     };
 
-    var vertices = [_]Vertex{
-    Vertex.new(vec3.new(-1.0, -1.0, 0.0), vec3.new(1.0, 0.0, 0.0)),
-    Vertex.new(vec3.new(2.0, -1.0, 0.0), vec3.new(0.0, 1.0, 0.0)),
-    Vertex.new(vec3.new(0.0, 1.0, 0.0), vec3.new(0.0, 0.0, 1.0)),
-    };
-    
-    var indices = [_]u32{ 0, 1, 2 };
+    var position_indexes: [4]usize = undefined;
+    var color_indexes: [4]usize = undefined;
+    switch (face) {
+        CubeFace.x_pos => {
+            position_indexes = [4]usize{ 0, 2, 3, 1 };
+            color_indexes = [4]usize{ 0, 1, 2, 3 };
+        },
+        CubeFace.x_neg => {
+            position_indexes = [4]usize{ 4, 5, 7, 6 };
+            color_indexes = [4]usize{ 0, 1, 2, 3 };
+        },
+        CubeFace.y_pos => {
+            position_indexes = [4]usize{ 0, 1, 5, 4 };
+            color_indexes = [4]usize{ 0, 1, 2, 3 };
+        },
+        CubeFace.y_neg => {
+            position_indexes = [4]usize{ 2, 6, 7, 3 };
+            color_indexes = [4]usize{ 0, 1, 2, 3 };
+        },
+        CubeFace.z_pos => {
+            position_indexes = [4]usize{ 0, 4, 6, 2 };
+            color_indexes = [4]usize{ 0, 1, 2, 3 };
+        },
+        CubeFace.z_neg => {
+            position_indexes = [4]usize{ 1, 3, 7, 5 };
+            color_indexes = [4]usize{ 0, 1, 2, 3 };
+        },
+    }
 
-    return opengl.Mesh.init(Vertex, u32, &vertices, &indices);
+    var index_offset = @intCast(u32, vertices.items.len);
+
+    vertices.appendSlice(&[_]Vertex{
+        Vertex.new(cube_positions[position_indexes[0]], cube_uvs[color_indexes[0]]),
+        Vertex.new(cube_positions[position_indexes[1]], cube_uvs[color_indexes[1]]),
+        Vertex.new(cube_positions[position_indexes[2]], cube_uvs[color_indexes[2]]),
+        Vertex.new(cube_positions[position_indexes[3]], cube_uvs[color_indexes[3]]),
+    }) catch panic("Failed to append", .{});
+
+    indices.appendSlice(&[_]u32{ 
+        index_offset + 0, 
+        index_offset + 1, 
+        index_offset + 2, 
+        index_offset + 0, 
+        index_offset + 2, 
+        index_offset + 3 }) catch panic("Failed to append", .{});
+}
+
+fn createCubeMesh(allocator: *Allocator) opengl.Mesh {
+    var vertices = VertexList.init(allocator);
+    defer vertices.deinit();
+
+    var indices = IndexList.init(allocator);
+    defer indices.deinit();
+
+    appendCubeFace(CubeFace.x_pos, &vertices, &indices);
+    appendCubeFace(CubeFace.x_neg, &vertices, &indices);
+    appendCubeFace(CubeFace.y_pos, &vertices, &indices);
+    appendCubeFace(CubeFace.y_neg, &vertices, &indices);
+    appendCubeFace(CubeFace.z_pos, &vertices, &indices);
+    appendCubeFace(CubeFace.z_neg, &vertices, &indices);
+
+    std.io.getStdOut().writer().print("Mesh size: {}\n", .{vertices.items.len}) catch {};
+
+    return opengl.Mesh.init(Vertex, u32, vertices.items, indices.items);
 }
 
 pub fn main() !void {
-   {
-        var chunk = world_chunks.ChunkData32.init();
-        chunk.setBlock(0, 0, 0, 1);
-        var id = chunk.getBlock(0, 0, 0);
-   }
-
     const stdout = std.io.getStdOut().writer();
+
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer {
+        const leaked = gpa.deinit();
+        if (leaked) panic("Error: memory leaked", .{});
+    }
 
     glfw.init();
     defer glfw.deinit();
@@ -88,7 +156,7 @@ pub fn main() !void {
     defer shader.deinit();
 
     var mesh_transform = Transform.zero(); mesh_transform.move(vec3.new(0.0, 0.0, 3.0));
-    var mesh = createCubeMesh();
+    var mesh = createCubeMesh(&gpa.allocator);
     defer mesh.deinit();
 
     //Uniform Indexes
@@ -99,14 +167,22 @@ pub fn main() !void {
     var lastTime = glfw.getTime();
     while (glfw.shouldCloseWindow(window)) {
         glfw.update();
+        opengl.setViewport(glfw.getWindowSize(window));
         opengl.init3dRendering();
         opengl.clearFramebuffer();
 
         if(glfw.input.getKeyDown(c.GLFW_KEY_W)) {
-            mesh_transform.move(vec3.new(0.0, 0.01, 0.0));
+            camera_transform.move(vec3.new(0.0, 0.01, 0.0));
         }
         if(glfw.input.getKeyDown(c.GLFW_KEY_S)) {
-            mesh_transform.move(vec3.new(0.0, -0.01, 0.0));
+            camera_transform.move(vec3.new(0.0, -0.01, 0.0));
+        }
+
+        if(glfw.input.getKeyDown(c.GLFW_KEY_A)) {
+            camera_transform.move(vec3.new(0.01, 0.0, 0.0));
+        }
+        if(glfw.input.getKeyDown(c.GLFW_KEY_D)) {
+            camera_transform.move(vec3.new(-0.01, 0.0, 0.0));
         }
 
         c.glUseProgram(shader.shader_program);
@@ -133,15 +209,6 @@ pub fn main() !void {
             lastTime = currentTime;
         }
     }
-
-    //Alloc testing
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer {
-        const leaked = gpa.deinit();
-        if (leaked) panic("Error: memory leaked", .{});
-    }
-    const bytes = try gpa.allocator.alloc(u8, 100);
-    gpa.allocator.free(bytes);
 
     try stdout.print("Hello, {s}!\n", .{"world"});
 }

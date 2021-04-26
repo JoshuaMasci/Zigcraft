@@ -4,10 +4,10 @@ const std = @import("std");
 const panic = std.debug.panic;
 const trait = std.meta.trait;
 
-//Todo Replace with pipeline state object
+//TODO Replace with pipeline state object
 pub fn init3dRendering() void {
     c.glEnable(c.GL_DEPTH_TEST);
-    c.glFrontFace(c.GL_CW);
+    c.glFrontFace(c.GL_CCW);
     c.glEnable(c.GL_CULL_FACE);
     c.glCullFace(c.GL_BACK);
 }
@@ -16,6 +16,10 @@ pub fn clearFramebuffer() void {
     //Need to enable depth test to clear depth buffer
     c.glEnable(c.GL_DEPTH_TEST);
     c.glClear(c.GL_COLOR_BUFFER_BIT | c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT);
+}
+
+pub fn setViewport(size: [2]i32) void {
+    c.glViewport(0, 0, @intCast(c.GLsizei, size[0]), @intCast(c.GLsizei, size[1]));
 }
 
 pub const Mesh = struct {

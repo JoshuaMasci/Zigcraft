@@ -12,6 +12,22 @@ const CubeFace = enum {
     z_neg,
 };
 
+const CubeFaceCheck = struct {
+    face: CubeFace,
+    x: i32,
+    y: i32,
+    z: i32,
+};
+
+const CubeFaceChecks = [_]CubeFaceCheck{
+    CubeFaceCheck{.face = CubeFace.x_pos, .x = 1,  .y = 0,  .z = 0},
+    CubeFaceCheck{.face = CubeFace.x_neg, .x = -1, .y = 0,  .z = 0},
+    CubeFaceCheck{.face = CubeFace.y_pos, .x = 0,  .y = 1,  .z = 0},
+    CubeFaceCheck{.face = CubeFace.y_neg, .x = 0,  .y = -1, .z = 0},
+    CubeFaceCheck{.face = CubeFace.z_pos, .x = 0,  .y = 0,  .z = 1},
+    CubeFaceCheck{.face = CubeFace.z_neg, .x = 0,  .y = 0,  .z = -1},
+};
+
 pub fn ChunkData(comptime X: u16, comptime Y: u16, comptime Z: u16) type {
     return struct {
         const Self = @This();
@@ -31,7 +47,7 @@ pub fn ChunkData(comptime X: u16, comptime Y: u16, comptime Z: u16) type {
                 while (y < Self.size_y) : (y += 1) {
                     var z: u16 = 0;
                     while (z < Self.size_x) : (z += 1) {
-                        data[x][y][z] = 0;
+                        data[x][y][z] = 1;
                     }
                 }
             }
@@ -39,12 +55,22 @@ pub fn ChunkData(comptime X: u16, comptime Y: u16, comptime Z: u16) type {
             return .{ .data = data, .dirty = true };
         }
 
-        pub fn getBlock(self: *Self, x: u16, y: u16, z: u16) BlockId {
-            return self.data[x][y][z];
+        pub fn getBlock(self: *Self, x: i32, y: i32, z: i32) BlockId {
+            return self.data[@intCast(usize, x)][@intCast(usize, y)][@intCast(usize, z)];
         }
 
-        pub fn setBlock(self: *Self, x: u16, y: u16, z: u16, id: BlockId) void {
-            self.data[x][y][z] = id;
+        pub fn getBlockSafe(self: *Self, x: i32, y: i32, z: i32) BlockId {
+            if(x >= Self.size_x or x < 0 or y >= Self.size_y or y < 0 or z >= Self.size_z or z < 0) {
+                return 0;
+            }
+            //const stdout = std.io.getStdOut().writer();
+            //stdout.print("{}, {}, {}\n", .{x, y, z}) catch return 0;
+
+            return self.data[@intCast(usize, x)][@intCast(usize, y)][@intCast(usize, z)];
+        }
+
+        pub fn setBlock(self: *Self, x: i32, y: i32, z: i32, id: BlockId) void {
+            self.data[@intCast(usize, x)][@intCast(usize, y)][@intCast(usize, z)] = id;
             self.dirty = true;
         }
 
@@ -65,11 +91,11 @@ pub fn CreateChunkMesh(comptime Chunk: type, allocator: *std.mem.Allocator, chun
     var indices = std.ArrayList(u32).init(allocator);
     defer indices.deinit();
     
-    var x: u16 = 0;
+    var x: i32 = 0;
     while (x < Chunk.size_x) : (x += 1) {
-        var y: u16 = 0;
+        var y: i32 = 0;
         while (y < Chunk.size_y) : (y += 1) {
-            var z: u16 = 0;
+            var z: i32 = 0;
             while (z < Chunk.size_x) : (z += 1) {
                 var blockId = chunk.getBlock(x, y, z);
                 var posVec = vec3.new(
@@ -80,12 +106,18 @@ pub fn CreateChunkMesh(comptime Chunk: type, allocator: *std.mem.Allocator, chun
                 var color = vec3.right();
 
                 if (blockId != 0) {
-                    appendCubeFace(CubeFace.x_pos, &vertices, &indices, posVec, color);
-                    appendCubeFace(CubeFace.x_neg, &vertices, &indices, posVec, color);
-                    appendCubeFace(CubeFace.y_pos, &vertices, &indices, posVec, color);
-                    appendCubeFace(CubeFace.y_neg, &vertices, &indices, posVec, color);
-                    appendCubeFace(CubeFace.z_pos, &vertices, &indices, posVec, color);
-                    appendCubeFace(CubeFace.z_neg, &vertices, &indices, posVec, color);
+
+                    for (CubeFaceChecks) |faceCheck| {
+                        var checkId = chunk.getBlockSafe(
+                            x + faceCheck.x,
+                            y + faceCheck.y,
+                            z + faceCheck.z,
+                            );
+
+                        if (checkId == 0) {
+                            appendCubeFace(faceCheck.face, &vertices, &indices, posVec, color);
+                        }
+                    }
                 }
             }
         }

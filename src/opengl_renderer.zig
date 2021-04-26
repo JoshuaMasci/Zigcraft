@@ -13,13 +13,15 @@ pub fn init3dRendering() void {
     c.glFrontFace(c.GL_CCW);
     c.glEnable(c.GL_CULL_FACE);
     c.glCullFace(c.GL_BACK);
+
+    c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 }
 
 pub fn clearFramebuffer() void {
     //Need to enable depth test to clear depth buffer
-    //c.glEnable(c.GL_DEPTH_TEST);
-    //c.glDepthMask(c.GL_TRUE);
-    c.glClear(c.GL_COLOR_BUFFER_BIT);
+    c.glEnable(c.GL_DEPTH_TEST);
+    c.glDepthMask(c.GL_TRUE);
+    c.glClear(c.GL_COLOR_BUFFER_BIT | c.GL_DEPTH_BUFFER_BIT);
 }
 
 pub fn setViewport(size: [2]i32) void {

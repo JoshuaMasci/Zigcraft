@@ -17,8 +17,13 @@ pub const Transform = struct {
         self.position = self.position.add(offset);
     }
 
+    pub fn rotate(self: *Self, offset: quat) void {
+        self.rotation = offset.mult(self.rotation);
+    }
+
     pub fn getLeft(self: *Self) vec3 {
-        return self.rotation.rotate_vec(vec3.left());
+        //zalgebra uses a left handed system, I use right
+        return self.rotation.rotate_vec(vec3.right());
     }
 
     pub fn getUp(self: *Self) vec3 {

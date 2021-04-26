@@ -7,6 +7,9 @@ const trait = std.meta.trait;
 //TODO Replace with pipeline state object
 pub fn init3dRendering() void {
     c.glEnable(c.GL_DEPTH_TEST);
+    c.glDepthMask(c.GL_TRUE);
+    c.glDepthFunc(c.GL_LESS);
+
     c.glFrontFace(c.GL_CCW);
     c.glEnable(c.GL_CULL_FACE);
     c.glCullFace(c.GL_BACK);
@@ -14,8 +17,9 @@ pub fn init3dRendering() void {
 
 pub fn clearFramebuffer() void {
     //Need to enable depth test to clear depth buffer
-    c.glEnable(c.GL_DEPTH_TEST);
-    c.glClear(c.GL_COLOR_BUFFER_BIT | c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT);
+    //c.glEnable(c.GL_DEPTH_TEST);
+    //c.glDepthMask(c.GL_TRUE);
+    c.glClear(c.GL_COLOR_BUFFER_BIT);
 }
 
 pub fn setViewport(size: [2]i32) void {

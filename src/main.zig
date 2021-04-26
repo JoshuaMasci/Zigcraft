@@ -11,7 +11,7 @@ const c = @import("c.zig");
 const glfw = @import("glfw_platform.zig");
 const opengl = @import("opengl_renderer.zig");
 
-const world_chunks = @import("chunk_data.zig");
+const chunks = @import("chunk.zig");
 
 pub const Vertex = struct {
     const Self = @This();
@@ -114,22 +114,24 @@ fn appendCubeFace(face: CubeFace, vertices: *VertexList, indices: *IndexList) vo
 }
 
 fn createCubeMesh(allocator: *Allocator) opengl.Mesh {
-    var vertices = VertexList.init(allocator);
-    defer vertices.deinit();
+    // var vertices = VertexList.init(allocator);
+    // defer vertices.deinit();
 
-    var indices = IndexList.init(allocator);
-    defer indices.deinit();
+    // var indices = IndexList.init(allocator);
+    // defer indices.deinit();
 
-    appendCubeFace(CubeFace.x_pos, &vertices, &indices);
-    appendCubeFace(CubeFace.x_neg, &vertices, &indices);
-    appendCubeFace(CubeFace.y_pos, &vertices, &indices);
-    appendCubeFace(CubeFace.y_neg, &vertices, &indices);
-    appendCubeFace(CubeFace.z_pos, &vertices, &indices);
-    appendCubeFace(CubeFace.z_neg, &vertices, &indices);
+    // appendCubeFace(CubeFace.x_pos, &vertices, &indices);
+    // appendCubeFace(CubeFace.x_neg, &vertices, &indices);
+    // appendCubeFace(CubeFace.y_pos, &vertices, &indices);
+    // appendCubeFace(CubeFace.y_neg, &vertices, &indices);
+    // appendCubeFace(CubeFace.z_pos, &vertices, &indices);
+    // appendCubeFace(CubeFace.z_neg, &vertices, &indices);
 
-    std.io.getStdOut().writer().print("Mesh size: {}\n", .{vertices.items.len}) catch {};
-
-    return opengl.Mesh.init(Vertex, u32, vertices.items, indices.items);
+    // return opengl.Mesh.init(Vertex, u32, vertices.items, indices.items);
+    var chunk = chunks.ChunkData32.init();
+    chunk.setBlock(0, 0, 0, 1);
+    chunk.setBlock(1, 0, 0, 1);
+    return chunks.CreateChunkMesh(chunks.ChunkData32, allocator, &chunk);
 }
 
 pub fn main() !void {
@@ -167,28 +169,17 @@ pub fn main() !void {
     var lastTime = glfw.getTime();
     while (glfw.shouldCloseWindow(window)) {
         glfw.update();
-        opengl.setViewport(glfw.getWindowSize(window));
+        var windowSize = glfw.getWindowSize(window);
+        opengl.setViewport(windowSize);
         opengl.init3dRendering();
         opengl.clearFramebuffer();
 
-        if(glfw.input.getKeyDown(c.GLFW_KEY_W)) {
-            camera_transform.move(vec3.new(0.0, 0.01, 0.0));
-        }
-        if(glfw.input.getKeyDown(c.GLFW_KEY_S)) {
-            camera_transform.move(vec3.new(0.0, -0.01, 0.0));
-        }
-
-        if(glfw.input.getKeyDown(c.GLFW_KEY_A)) {
-            camera_transform.move(vec3.new(0.01, 0.0, 0.0));
-        }
-        if(glfw.input.getKeyDown(c.GLFW_KEY_D)) {
-            camera_transform.move(vec3.new(-0.01, 0.0, 0.0));
-        }
+        moveCamera(1.0/60.0, &camera_transform);
 
         c.glUseProgram(shader.shader_program);
 
         //View Projection Matrix
-        var projection_matrix = camera.getPerspective(1920.0 / 1080.0);
+        var projection_matrix = camera.getPerspective(@intToFloat(f32, windowSize[0]) / @intToFloat(f32, windowSize[1]));
         var view_matrix = camera_transform.getViewMatrix();
         var view_projection_matrix = mat4.mult(projection_matrix, view_matrix);
         c.glUniformMatrix4fv(view_projection_matrix_index, 1, c.GL_FALSE, view_projection_matrix.get_data());
@@ -211,4 +202,68 @@ pub fn main() !void {
     }
 
     try stdout.print("Hello, {s}!\n", .{"world"});
+}
+
+fn moveCamera(timeStep: f32, transform: *Transform) void {
+        const moveSpeed: f32 = 1.0; //Meters
+        const rotateSpeed: f32 = 30.0; //Degrees
+
+        const left = transform.getLeft();
+        const up = transform.getUp();
+        const forward = transform.getForward();
+
+        {
+            var leftMove: f32 = 0.0;
+            if(glfw.input.getKeyDown(c.GLFW_KEY_A)) {
+                leftMove += 1.0;
+            }
+            if(glfw.input.getKeyDown(c.GLFW_KEY_D)) {
+                leftMove -= 1.0;
+            }
+            transform.move(left.scale(leftMove * moveSpeed * timeStep));
+        }
+
+        {
+            var upMove: f32 = 0.0;
+            if(glfw.input.getKeyDown(c.GLFW_KEY_SPACE)) {
+                upMove += 1.0;
+            }
+            if(glfw.input.getKeyDown(c.GLFW_KEY_LEFT_SHIFT)) {
+                upMove -= 1.0;
+            }
+            transform.move(up.scale(upMove * moveSpeed * timeStep));
+        }
+
+        {
+            var forwardMove: f32 = 0.0;
+            if(glfw.input.getKeyDown(c.GLFW_KEY_W)) {
+                forwardMove += 1.0;
+            }
+            if(glfw.input.getKeyDown(c.GLFW_KEY_S)) {
+                forwardMove -= 1.0;
+            }
+            transform.move(forward.scale(forwardMove * moveSpeed * timeStep));
+        }
+
+        {
+            var pitchRotate: f32 = 0.0;
+            if(glfw.input.getKeyDown(c.GLFW_KEY_UP)) {
+                pitchRotate += 1.0;
+            }
+            if(glfw.input.getKeyDown(c.GLFW_KEY_DOWN)) {
+                pitchRotate -= 1.0;
+            }
+            transform.rotate(quat.from_axis(pitchRotate * rotateSpeed * timeStep, transform.getLeft()));
+        }
+
+        {
+            var yawRotate: f32 = 0.0;
+            if(glfw.input.getKeyDown(c.GLFW_KEY_LEFT)) {
+                yawRotate += 1.0;
+            }
+            if(glfw.input.getKeyDown(c.GLFW_KEY_RIGHT)) {
+                yawRotate -= 1.0;
+            }
+            transform.rotate(quat.from_axis(yawRotate * rotateSpeed * timeStep, vec3.up()));
+        }
 }

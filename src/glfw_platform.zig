@@ -70,6 +70,8 @@ pub fn createWindow(width: i32, height: i32, title: [:0]const u8) WindowId {
     c.glfwMakeContextCurrent(handle);
     _ = c.glfwSetKeyCallback(handle, glfwKeyCallback);
 
+    c.glfwMaximizeWindow(handle);
+
     if (nextWindowId == 0) {
         //Load Glad if this is the first window
         if (c.gladLoadGLLoader(@ptrCast(c.GLADloadproc, c.glfwGetProcAddress)) == 0) {

@@ -10,6 +10,7 @@ usingnamespace @import("transform.zig");
 const c = @import("c.zig");
 const glfw = @import("glfw_platform.zig");
 const opengl = @import("opengl_renderer.zig");
+const png = @import("png.zig");
 
 const chunks = @import("chunk.zig");
 
@@ -34,103 +35,9 @@ pub const Vertex = struct {
     }
 };
 
-const CubeFace = enum {
-    x_pos,
-    x_neg,
-    y_pos,
-    y_neg,
-    z_pos,
-    z_neg,
-};
-
-const VertexList = std.ArrayList(Vertex);
-const IndexList = std.ArrayList(u32);
-
-fn appendCubeFace(face: CubeFace, vertices: *VertexList, indices: *IndexList) void {
-    const cube_positions = [_]vec3{
-        vec3.new(0.5,  0.5,  0.5),
-        vec3.new(0.5,  0.5, -0.5),
-        vec3.new(0.5, -0.5,  0.5),
-        vec3.new(0.5, -0.5, -0.5),
-        vec3.new(-0.5,  0.5,  0.5),
-        vec3.new(-0.5,  0.5, -0.5),
-        vec3.new(-0.5, -0.5,  0.5),
-        vec3.new(-0.5, -0.5, -0.5),
-    };
-
-    //uvs being used as colors for now
-    const cube_uvs = [_]vec3{
-        vec3.new(0.0, 0.0, 1.0),
-        vec3.new(0.0, 1.0, 1.0),
-        vec3.new(1.0, 0.0, 1.0),
-        vec3.new(1.0, 1.0, 1.0),
-    };
-
-    var position_indexes: [4]usize = undefined;
-    var color_indexes: [4]usize = undefined;
-    switch (face) {
-        CubeFace.x_pos => {
-            position_indexes = [4]usize{ 0, 2, 3, 1 };
-            color_indexes = [4]usize{ 0, 1, 2, 3 };
-        },
-        CubeFace.x_neg => {
-            position_indexes = [4]usize{ 4, 5, 7, 6 };
-            color_indexes = [4]usize{ 0, 1, 2, 3 };
-        },
-        CubeFace.y_pos => {
-            position_indexes = [4]usize{ 0, 1, 5, 4 };
-            color_indexes = [4]usize{ 0, 1, 2, 3 };
-        },
-        CubeFace.y_neg => {
-            position_indexes = [4]usize{ 2, 6, 7, 3 };
-            color_indexes = [4]usize{ 0, 1, 2, 3 };
-        },
-        CubeFace.z_pos => {
-            position_indexes = [4]usize{ 0, 4, 6, 2 };
-            color_indexes = [4]usize{ 0, 1, 2, 3 };
-        },
-        CubeFace.z_neg => {
-            position_indexes = [4]usize{ 1, 3, 7, 5 };
-            color_indexes = [4]usize{ 0, 1, 2, 3 };
-        },
-    }
-
-    var index_offset = @intCast(u32, vertices.items.len);
-
-    vertices.appendSlice(&[_]Vertex{
-        Vertex.new(cube_positions[position_indexes[0]], cube_uvs[color_indexes[0]]),
-        Vertex.new(cube_positions[position_indexes[1]], cube_uvs[color_indexes[1]]),
-        Vertex.new(cube_positions[position_indexes[2]], cube_uvs[color_indexes[2]]),
-        Vertex.new(cube_positions[position_indexes[3]], cube_uvs[color_indexes[3]]),
-    }) catch panic("Failed to append", .{});
-
-    indices.appendSlice(&[_]u32{ 
-        index_offset + 0, 
-        index_offset + 1, 
-        index_offset + 2, 
-        index_offset + 0, 
-        index_offset + 2, 
-        index_offset + 3 }) catch panic("Failed to append", .{});
-}
-
-fn createCubeMesh(allocator: *Allocator) opengl.Mesh {
-    // var vertices = VertexList.init(allocator);
-    // defer vertices.deinit();
-
-    // var indices = IndexList.init(allocator);
-    // defer indices.deinit();
-
-    // appendCubeFace(CubeFace.x_pos, &vertices, &indices);
-    // appendCubeFace(CubeFace.x_neg, &vertices, &indices);
-    // appendCubeFace(CubeFace.y_pos, &vertices, &indices);
-    // appendCubeFace(CubeFace.y_neg, &vertices, &indices);
-    // appendCubeFace(CubeFace.z_pos, &vertices, &indices);
-    // appendCubeFace(CubeFace.z_neg, &vertices, &indices);
-
-    // return opengl.Mesh.init(Vertex, u32, vertices.items, indices.items);
+fn createChunkMesh(allocator: *Allocator) opengl.Mesh {
     var chunk = chunks.ChunkData32.init();
     chunk.setBlock(0, 0, 0, 1);
-    chunk.setBlock(1, 0, 0, 1);
     return chunks.CreateChunkMesh(chunks.ChunkData32, allocator, &chunk);
 }
 
@@ -149,21 +56,28 @@ pub fn main() !void {
     var window = glfw.createWindow(1600, 900, "ZigCraft V0.1");
     defer glfw.destoryWindow(window);
 
+    var png_file = @embedFile("arrow.png");
+    var png_image = try png.Png.initMemory(png_file);
+    defer png_image.deinit();
+    var png_texture = opengl.Texture.init(png_image.size, png_image.data);
+    defer png_texture.deinit();
+
     var camera = Camera.new(64.0, 0.1, 1000.0);
     var camera_transform = Transform.zero();
 
-    var vertex_code = @embedFile("vert.glsl");
-    var fragment_code = @embedFile("frag.glsl");
+    var vertex_code = @embedFile("texture.vert.glsl");
+    var fragment_code = @embedFile("texture.frag.glsl");
     var shader = opengl.Shader.init(vertex_code, fragment_code);
     defer shader.deinit();
 
     var mesh_transform = Transform.zero(); mesh_transform.move(vec3.new(0.0, 0.0, 3.0));
-    var mesh = createCubeMesh(&gpa.allocator);
+    var mesh = createChunkMesh(&gpa.allocator);
     defer mesh.deinit();
 
     //Uniform Indexes
     var view_projection_matrix_index = c.glGetUniformLocation(shader.shader_program, "view_projection_matrix");
     var model_matrix_index = c.glGetUniformLocation(shader.shader_program, "model_matrix");
+    var texture_index = c.glGetUniformLocation(shader.shader_program, "block_texture");
 
     var frameCount: u32 = 0;
     var lastTime = glfw.getTime();
@@ -187,6 +101,11 @@ pub fn main() !void {
         //Model Matrix
         var model_matrix = mesh_transform.getModelMatrix();
         c.glUniformMatrix4fv(model_matrix_index, 1, c.GL_FALSE, model_matrix.get_data());
+        
+        //Texture
+        const bind_point = 0;
+        png_texture.bind(bind_point);
+        c.glUniform1i(texture_index, bind_point);
 
         mesh.draw();
 
@@ -205,7 +124,7 @@ pub fn main() !void {
 }
 
 fn moveCamera(timeStep: f32, transform: *Transform) void {
-        const moveSpeed: f32 = 1.0; //Meters
+        const moveSpeed: f32 = 5.0; //Meters
         const rotateSpeed: f32 = 30.0; //Degrees
 
         const left = transform.getLeft();

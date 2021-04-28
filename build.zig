@@ -18,14 +18,15 @@ pub fn build(b: *Builder) void {
     };
     exe.addPackage(zalgebra);
 
-    //glfw
     exe.addIncludeDir("C:/zig_glfw/include");
     exe.addLibPath("C:/zig_glfw/build/src/Release");
+    exe.linkSystemLibrary("glfw3");
 
-    //opengl
     exe.addIncludeDir("glad/include");
     exe.addCSourceFile("glad/src/glad.c", &[_][]const u8{"-std=c99"});
-    exe.linkSystemLibrary("glfw3");
+
+    exe.addIncludeDir("stb_image");
+    exe.addCSourceFile("stb_image/stb_image.c", &[_][]const u8{"-std=c99"});
 
     exe.linkLibC();
 

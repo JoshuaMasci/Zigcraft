@@ -157,3 +157,36 @@ pub const Shader = struct {
         return shader;
     }
 };
+
+pub const Texture = struct {
+    const Self = @This();
+
+    handle: c.GLuint,
+
+    //TODO format + sampling
+    pub fn init(size: [2]u32, data: []const u8) Self {
+        var texture: c.GLuint = undefined;
+        c.glGenTextures(1, &texture);
+        c.glBindTexture(c.GL_TEXTURE_2D, texture);
+
+        c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
+        c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
+        c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST);
+        c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
+
+        c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_RGBA, @intCast(c.GLsizei, size[0]), @intCast(c.GLsizei, size[1]), 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, data.ptr);
+
+        return Self{
+            .handle = texture,
+        };
+    }
+
+    pub fn deinit(self: *Self) void {
+        c.glDeleteTextures(1, &self.handle);
+    }
+
+    pub fn bind(self: *Self, index: u32) void {
+        c.glActiveTexture(c.GL_TEXTURE0 + index);
+        c.glBindTexture(c.GL_TEXTURE_2D, self.handle);
+    }
+};

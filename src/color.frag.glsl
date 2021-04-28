@@ -5,5 +5,5 @@ in vec3 out_color;
 
 void main()
 {
-    FragColor = vec4(out_color, 1.0f);
+    FragColor = texture(ourTexture, out_color.xy);
 } 

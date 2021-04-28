@@ -127,60 +127,52 @@ pub fn CreateChunkMesh(comptime Chunk: type, allocator: *std.mem.Allocator, chun
 
 fn appendCubeFace(face: CubeFace, vertices: *std.ArrayList(vertex.TexturedVertex), indices: *std.ArrayList(u32), position: vec3, color: vec3) void {
     const cube_positions = [_]vec3{
-        vec3.new(0.5,  0.5,  0.5), // 0
-        vec3.new(0.5,  0.5, -0.5), // 1
-        vec3.new(0.5, -0.5,  0.5), // 2
-        vec3.new(0.5, -0.5, -0.5), // 3
-        vec3.new(-0.5,  0.5,  0.5),// 4
-        vec3.new(-0.5,  0.5, -0.5),// 5
-        vec3.new(-0.5, -0.5,  0.5),// 6
-        vec3.new(-0.5, -0.5, -0.5),// 7
+        vec3.new(0.5,  0.5,  0.5),
+        vec3.new(0.5,  0.5, -0.5),
+        vec3.new(0.5, -0.5,  0.5),
+        vec3.new(0.5, -0.5, -0.5),
+        vec3.new(-0.5,  0.5,  0.5),
+        vec3.new(-0.5,  0.5, -0.5),
+        vec3.new(-0.5, -0.5,  0.5),
+        vec3.new(-0.5, -0.5, -0.5),
     };
 
-    //uvs being used as colors for now
-    var uv_indexes: [4]usize = undefined;
     const cube_uvs = [_]vec2{
-        vec2.new(0.0, 0.0), // 0
-        vec2.new(0.0, 1.0), // 1
-        vec2.new(1.0, 0.0), // 2
-        vec2.new(1.0, 1.0), // 3
+        vec2.new(0.0, 0.0),
+        vec2.new(0.0, 1.0),
+        vec2.new(1.0, 1.0),
+        vec2.new(1.0, 0.0),
     };
 
     var position_indexes: [4]usize = undefined;
     switch (face) {
         CubeFace.x_pos => {
             position_indexes = [4]usize{ 0, 2, 3, 1 };
-            uv_indexes =       [4]usize{ 0, 1, 3, 2 };
         },
         CubeFace.x_neg => {
-            position_indexes = [4]usize{ 4, 5, 7, 6 };
-            uv_indexes =       [4]usize{ 2, 0, 1, 3 };
+            position_indexes = [4]usize{ 5, 7, 6, 4 };
         },
         CubeFace.y_pos => {
             position_indexes = [4]usize{ 0, 1, 5, 4 };
-            uv_indexes =       [4]usize{ 0, 1, 3, 2 };
         },
         CubeFace.y_neg => {
-            position_indexes = [4]usize{ 2, 6, 7, 3 };
-            uv_indexes =       [4]usize{ 2, 0, 1, 3 };
+            position_indexes = [4]usize{ 6, 7, 3, 2 };
         },
         CubeFace.z_pos => {
-            position_indexes = [4]usize{ 0, 4, 6, 2 };
-            uv_indexes =       [4]usize{ 2, 0, 1, 3 };
+            position_indexes = [4]usize{ 4, 6, 2, 0 };
         },
         CubeFace.z_neg => {
             position_indexes = [4]usize{ 1, 3, 7, 5 };
-            uv_indexes =       [4]usize{ 0, 1, 3, 2 };
         },
     }
 
     var index_offset = @intCast(u32, vertices.items.len);
 
     vertices.appendSlice(&[_]vertex.TexturedVertex{
-        vertex.TexturedVertex.new(cube_positions[position_indexes[0]].add(position), cube_uvs[uv_indexes[0]]),
-        vertex.TexturedVertex.new(cube_positions[position_indexes[1]].add(position), cube_uvs[uv_indexes[1]]),
-        vertex.TexturedVertex.new(cube_positions[position_indexes[2]].add(position), cube_uvs[uv_indexes[2]]),
-        vertex.TexturedVertex.new(cube_positions[position_indexes[3]].add(position), cube_uvs[uv_indexes[3]]),
+        vertex.TexturedVertex.new(cube_positions[position_indexes[0]].add(position), cube_uvs[0]),
+        vertex.TexturedVertex.new(cube_positions[position_indexes[1]].add(position), cube_uvs[1]),
+        vertex.TexturedVertex.new(cube_positions[position_indexes[2]].add(position), cube_uvs[2]),
+        vertex.TexturedVertex.new(cube_positions[position_indexes[3]].add(position), cube_uvs[3]),
     }) catch std.debug.panic("Failed to append", .{});
 
     indices.appendSlice(&[_]u32{ 

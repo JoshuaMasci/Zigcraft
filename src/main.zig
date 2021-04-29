@@ -6,40 +6,19 @@ const Allocator = std.mem.Allocator;
 usingnamespace @import("zalgebra");
 usingnamespace @import("camera.zig");
 usingnamespace @import("transform.zig");
-usingnamespace @import("chunk.zig");
+usingnamespace @import("chunk/chunk.zig");
 
 const c = @import("c.zig");
 const glfw = @import("glfw_platform.zig");
 const opengl = @import("opengl_renderer.zig");
 const png = @import("png.zig");
 
-pub const Vertex = struct {
-    const Self = @This();
-
-    position: vec3,
-    color: vec3,
-
-    pub fn new(position: vec3, color: vec3) Self {
-        return Self{
-            .position = position,
-            .color = color,
-        };
-    }
-
-    pub fn genVao() void {
-        c.glEnableVertexAttribArray(0);
-        c.glEnableVertexAttribArray(1);
-        c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, @sizeOf(Self), null); // Position is at zero
-        c.glVertexAttribPointer(1, 3, c.GL_FLOAT, c.GL_FALSE, @sizeOf(Self), @intToPtr(*const c_void, @byteOffsetOf(Self, "color")));
-    }
-};
-
 fn createChunkMesh(allocator: *Allocator) opengl.Mesh {
     var chunk = ChunkData32.init();
     chunk.setBlock(&vec3i.new(0, 0, 0), 1);
-    chunk.setBlock(&vec3i.new(1, 0, 0), 1);
-    chunk.setBlock(&vec3i.new(0, 1, 0), 1);
-    chunk.setBlock(&vec3i.new(0, 0, 1), 1);
+    chunk.setBlock(&vec3i.new(1, 0, 0), 2);
+    chunk.setBlock(&vec3i.new(0, 1, 0), 3);
+    chunk.setBlock(&vec3i.new(0, 0, 1), 4);
     return CreateChunkMesh(ChunkData32, allocator, &chunk);
 }
 
@@ -58,7 +37,7 @@ pub fn main() !void {
     var window = glfw.createWindow(1600, 900, "ZigCraft V0.1");
     defer glfw.destoryWindow(window);
 
-    var png_file = @embedFile("arrow.png");
+    var png_file = @embedFile("spritesheet.png");
     var png_image = try png.Png.initMemory(png_file);
     defer png_image.deinit();
     var png_texture = opengl.Texture.init(png_image.size, png_image.data);
@@ -126,8 +105,8 @@ pub fn main() !void {
 }
 
 fn moveCamera(timeStep: f32, transform: *Transform) void {
-        const moveSpeed: f32 = 5.0; //Meters
-        const rotateSpeed: f32 = 30.0; //Degrees
+        const moveSpeed: f32 = 3.0; //Meters
+        const rotateSpeed: f32 = 45.0; //Degrees
 
         const left = transform.getLeft();
         const up = transform.getUp();

@@ -1,8 +1,8 @@
 usingnamespace @import("zalgebra");
+usingnamespace @import("block.zig");
 
 pub const vec3i = Vec3(i64);
 
-pub const BlockId = u16;
 pub const ChunkData32 = ChunkData(32, 32, 32);
 
 const CubeFace = enum {
@@ -70,10 +70,9 @@ pub fn ChunkData(comptime X: u64, comptime Y: u64, comptime Z: u64) type {
     };
 }
 
-
 const std = @import("std");
-const vertex = @import("vertex.zig");
-const opengl = @import("opengl_renderer.zig");
+const vertex = @import("../vertex.zig");
+const opengl = @import("../opengl_renderer.zig");
 pub fn CreateChunkMesh(comptime Chunk: type, allocator: *std.mem.Allocator, chunk: *Chunk) opengl.Mesh {
     var vertices = std.ArrayList(vertex.TexturedVertex).init(allocator);
     defer vertices.deinit();
@@ -89,14 +88,18 @@ pub fn CreateChunkMesh(comptime Chunk: type, allocator: *std.mem.Allocator, chun
             while (index.z < Chunk.size_x) : (index.z += 1) {
                 var blockId = chunk.getBlock(&index);
                 var posVec = index.cast(f32);
-                var color = vec3.right();
 
                 if (blockId != 0) {
 
                     for (CubeFaceChecks) |faceCheck| {
                         var checkId = chunk.getBlockSafe(&index.add(faceCheck.offset));
                         if (checkId == 0) {
-                            appendCubeFace(faceCheck.face, &vertices, &indices, posVec, color);
+
+                            var texture_index = BlockList[blockId].texture_index;
+                            var x_offset = @intToFloat(f32, @rem(texture_index, 8));
+                            var y_offset = @intToFloat(f32,  @divTrunc(texture_index, 8));
+                            var texture_offset = vec2.new(x_offset, y_offset).scale(1.0 / 8.0);
+                            appendCubeFace(faceCheck.face, &vertices, &indices, posVec, texture_offset);
                         }
                     }
                 }
@@ -107,7 +110,7 @@ pub fn CreateChunkMesh(comptime Chunk: type, allocator: *std.mem.Allocator, chun
     return opengl.Mesh.init(vertex.TexturedVertex, u32, vertices.items, indices.items);
 }
 
-fn appendCubeFace(face: CubeFace, vertices: *std.ArrayList(vertex.TexturedVertex), indices: *std.ArrayList(u32), position: vec3, color: vec3) void {
+fn appendCubeFace(face: CubeFace, vertices: *std.ArrayList(vertex.TexturedVertex), indices: *std.ArrayList(u32), position: vec3, uv_offset: vec2) void {
     const cube_positions = [_]vec3{
         vec3.new(0.5,  0.5,  0.5),
         vec3.new(0.5,  0.5, -0.5),
@@ -120,10 +123,10 @@ fn appendCubeFace(face: CubeFace, vertices: *std.ArrayList(vertex.TexturedVertex
     };
 
     const cube_uvs = [_]vec2{
-        vec2.new(0.0, 0.0),
-        vec2.new(0.0, 1.0),
-        vec2.new(1.0, 1.0),
-        vec2.new(1.0, 0.0),
+        vec2.new(0.0, 0.0).add(uv_offset),
+        vec2.new(0.0, 1.0 / 8.0).add(uv_offset),
+        vec2.new(1.0 / 8.0, 1.0 / 8.0).add(uv_offset),
+        vec2.new(1.0 / 8.0, 0.0).add(uv_offset),
     };
 
     var position_indexes: [4]usize = undefined;

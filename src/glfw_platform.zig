@@ -77,6 +77,19 @@ pub fn createWindow(width: i32, height: i32, title: [:0]const u8) WindowId {
         if (c.gladLoadGLLoader(@ptrCast(c.GLADloadproc, c.glfwGetProcAddress)) == 0) {
             panic("Failed to initialise GLAD", .{});
         }
+
+        var major_ver: c.GLint = undefined;
+        var minor_ver: c.GLint = undefined;
+        c.glGetIntegerv(c.GL_MAJOR_VERSION, &major_ver);
+        c.glGetIntegerv(c.GL_MINOR_VERSION, &minor_ver);
+        var vendor_name = c.glGetString(c.GL_VENDOR);
+        var device_name = c.glGetString(c.GL_RENDERER);
+        const stdout = std.io.getStdOut().writer();
+        stdout.print("Opengl Initialized\n", .{}) catch {};
+        stdout.print("Opengl Version: {}.{}\n", .{major_ver, minor_ver}) catch {};
+        stdout.print("Devcie Vendor: {s}\n", .{vendor_name}) catch {};
+        stdout.print("Device Name: {s}\n", .{device_name}) catch {};
+        stdout.print("\n", .{}) catch {};
     }
 
     windowMap.put(nextWindowId, handle) catch panic("Failed to add window Id", .{});

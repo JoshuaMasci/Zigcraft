@@ -13,8 +13,8 @@ pub const Block = struct {
 
 pub const BlockList = [_]Block{
     Block.new(0, -1),//Air
-    Block.new(1,  0),//Stone?
-    Block.new(2,  1),//Dirt?
-    Block.new(3,  2),//Grass?
-    Block.new(4,  22),//Grass?
+    Block.new(1,  14),//Stone
+    Block.new(2,  3),//Dirt
+    Block.new(3,  2),//Grass
+    Block.new(4,  1),//Brick
 };

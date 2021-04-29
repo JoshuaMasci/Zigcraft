@@ -15,11 +15,29 @@ const png = @import("png.zig");
 
 fn createChunkMesh(allocator: *Allocator) opengl.Mesh {
     var chunk = ChunkData32.init();
-    chunk.setBlock(&vec3i.new(0, 0, 0), 1);
-    chunk.setBlock(&vec3i.new(1, 0, 0), 2);
-    chunk.setBlock(&vec3i.new(0, 1, 0), 3);
-    chunk.setBlock(&vec3i.new(0, 0, 1), 4);
+    generateChunk(&chunk);
     return CreateChunkMesh(ChunkData32, allocator, &chunk);
+}
+
+fn generateChunk(chunk: *ChunkData32) void {
+    var index: vec3i = vec3i.zero();
+    while (index.x < ChunkData32.size_x) : (index.x += 1) {
+        index.y = 0;
+        while (index.y < ChunkData32.size_y) : (index.y += 1) {
+            index.z = 0;
+            while (index.z < ChunkData32.size_x) : (index.z += 1) {
+                if (index.y  == 24) {
+                    chunk.setBlock(&index, 3);
+                }
+                else if (index.y  < 24 and index.y  > 18) {
+                    chunk.setBlock(&index, 2);
+                }
+                else if (index.y  <= 18) {
+                    chunk.setBlock(&index, 1);
+                }
+            }
+        }
+    }
 }
 
 pub fn main() !void {

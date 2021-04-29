@@ -1,6 +1,6 @@
 usingnamespace @import("zalgebra");
 
-pub const BlockPos = [3]isize;
+pub const vec3i = Vec3(i64);
 
 pub const BlockId = u16;
 pub const ChunkData32 = ChunkData(32, 32, 32);
@@ -16,60 +16,51 @@ const CubeFace = enum {
 
 const CubeFaceCheck = struct {
     face: CubeFace,
-    x: i32,
-    y: i32,
-    z: i32,
+    offset: vec3i,
 };
 
 const CubeFaceChecks = [_]CubeFaceCheck{
-    CubeFaceCheck{.face = CubeFace.x_pos, .x = 1,  .y = 0,  .z = 0},
-    CubeFaceCheck{.face = CubeFace.x_neg, .x = -1, .y = 0,  .z = 0},
-    CubeFaceCheck{.face = CubeFace.y_pos, .x = 0,  .y = 1,  .z = 0},
-    CubeFaceCheck{.face = CubeFace.y_neg, .x = 0,  .y = -1, .z = 0},
-    CubeFaceCheck{.face = CubeFace.z_pos, .x = 0,  .y = 0,  .z = 1},
-    CubeFaceCheck{.face = CubeFace.z_neg, .x = 0,  .y = 0,  .z = -1},
+    CubeFaceCheck{.face = CubeFace.x_pos, .offset = vec3i.new( 1,  0,  0)},
+    CubeFaceCheck{.face = CubeFace.x_neg, .offset = vec3i.new(-1,  0,  0)},
+    CubeFaceCheck{.face = CubeFace.y_pos, .offset = vec3i.new( 0,  1,  0)},
+    CubeFaceCheck{.face = CubeFace.y_neg, .offset = vec3i.new( 0, -1,  0)},
+    CubeFaceCheck{.face = CubeFace.z_pos, .offset = vec3i.new( 0,  0,  1)},
+    CubeFaceCheck{.face = CubeFace.z_neg, .offset = vec3i.new( 0,  0, -1)},
 };
 
-pub fn ChunkData(comptime X: usize, comptime Y: usize, comptime Z: usize) type {
+pub fn ChunkData(comptime X: u64, comptime Y: u64, comptime Z: u64) type {
     return struct {
         const Self = @This();
-        pub const size_x: usize = X;
-        pub const size_y: usize = Y;
-        pub const size_z: usize = Z;
+        pub const size_x: u64 = X;
+        pub const size_y: u64 = Y;
+        pub const size_z: u64 = Z;
 
-        data: [size_x][size_y][size_z]BlockId,
+        const ARRAY_SIZE: u64 = size_x * size_y * size_z;
+        data: [ARRAY_SIZE]BlockId,
         dirty: bool,
 
         pub fn init() Self {
-            var data: [size_x][size_y][size_z]BlockId = undefined;
-
-            var x: usize = 0;
-            while (x < Self.size_x) : (x += 1) {
-                var y: usize = 0;
-                while (y < Self.size_y) : (y += 1) {
-                    var z: usize = 0;
-                    while (z < Self.size_x) : (z += 1) {
-                        data[x][y][z] = 0;
-                    }
-                }
-            }
-
+            var data: [ARRAY_SIZE]BlockId = [_]BlockId{0} ** ARRAY_SIZE;
             return .{ .data = data, .dirty = true };
         }
 
-        pub fn getBlock(self: *Self, x: i32, y: i32, z: i32) BlockId {
-            return self.data[@intCast(usize, x)][@intCast(usize, y)][@intCast(usize, z)];
+        fn getBlockIndex(pos: *vec3i) u64 {
+            return (@intCast(u64, pos.x)) + (@intCast(u64, pos.y) * size_y) + (@intCast(u64, pos.z) * size_y * size_z);
         }
 
-        pub fn getBlockSafe(self: *Self, x: i32, y: i32, z: i32) BlockId {
-            if(x >= Self.size_x or x < 0 or y >= Self.size_y or y < 0 or z >= Self.size_z or z < 0) {
+        pub fn getBlock(self: *Self, pos: *vec3i) BlockId {
+            return self.data[getBlockIndex(pos)];
+        }
+
+        pub fn getBlockSafe(self: *Self, pos: *vec3i) BlockId {
+            if(pos.x >= Self.size_x or pos.x < 0 or pos.y >= Self.size_y or pos.y < 0 or pos.z >= Self.size_z or pos.z < 0) {
                 return 0;
             }
-            return self.data[@intCast(usize, x)][@intCast(usize, y)][@intCast(usize, z)];
+            return self.data[getBlockIndex(pos)];
         }
 
-        pub fn setBlock(self: *Self, x: i32, y: i32, z: i32, id: BlockId) void {
-            self.data[@intCast(usize, x)][@intCast(usize, y)][@intCast(usize, z)] = id;
+        pub fn setBlock(self: *Self, pos: *vec3i, id: BlockId) void {
+            self.data[getBlockIndex(pos)] = id;
             self.dirty = true;
         }
 
@@ -90,29 +81,20 @@ pub fn CreateChunkMesh(comptime Chunk: type, allocator: *std.mem.Allocator, chun
     var indices = std.ArrayList(u32).init(allocator);
     defer indices.deinit();
     
-    var x: i32 = 0;
-    while (x < Chunk.size_x) : (x += 1) {
-        var y: i32 = 0;
-        while (y < Chunk.size_y) : (y += 1) {
-            var z: i32 = 0;
-            while (z < Chunk.size_x) : (z += 1) {
-                var blockId = chunk.getBlock(x, y, z);
-                var posVec = vec3.new(
-                    @intToFloat(f32, x),
-                    @intToFloat(f32, y),
-                    @intToFloat(f32, z),
-                    );
+    var index: vec3i = vec3i.zero();
+    while (index.x < Chunk.size_x) : (index.x += 1) {
+        index.y = 0;
+        while (index.y < Chunk.size_y) : (index.y += 1) {
+            index.z = 0;
+            while (index.z < Chunk.size_x) : (index.z += 1) {
+                var blockId = chunk.getBlock(&index);
+                var posVec = index.cast(f32);
                 var color = vec3.right();
 
                 if (blockId != 0) {
 
                     for (CubeFaceChecks) |faceCheck| {
-                        var checkId = chunk.getBlockSafe(
-                            x + faceCheck.x,
-                            y + faceCheck.y,
-                            z + faceCheck.z,
-                            );
-
+                        var checkId = chunk.getBlockSafe(&index.add(faceCheck.offset));
                         if (checkId == 0) {
                             appendCubeFace(faceCheck.face, &vertices, &indices, posVec, color);
                         }

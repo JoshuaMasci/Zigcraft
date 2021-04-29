@@ -6,13 +6,12 @@ const Allocator = std.mem.Allocator;
 usingnamespace @import("zalgebra");
 usingnamespace @import("camera.zig");
 usingnamespace @import("transform.zig");
+usingnamespace @import("chunk.zig");
 
 const c = @import("c.zig");
 const glfw = @import("glfw_platform.zig");
 const opengl = @import("opengl_renderer.zig");
 const png = @import("png.zig");
-
-const chunks = @import("chunk.zig");
 
 pub const Vertex = struct {
     const Self = @This();
@@ -36,9 +35,12 @@ pub const Vertex = struct {
 };
 
 fn createChunkMesh(allocator: *Allocator) opengl.Mesh {
-    var chunk = chunks.ChunkData32.init();
-    chunk.setBlock(0, 0, 0, 1);
-    return chunks.CreateChunkMesh(chunks.ChunkData32, allocator, &chunk);
+    var chunk = ChunkData32.init();
+    chunk.setBlock(&vec3i.new(0, 0, 0), 1);
+    chunk.setBlock(&vec3i.new(1, 0, 0), 1);
+    chunk.setBlock(&vec3i.new(0, 1, 0), 1);
+    chunk.setBlock(&vec3i.new(0, 0, 1), 1);
+    return CreateChunkMesh(ChunkData32, allocator, &chunk);
 }
 
 pub fn main() !void {

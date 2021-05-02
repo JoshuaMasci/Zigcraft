@@ -7,6 +7,7 @@ usingnamespace @import("zalgebra");
 usingnamespace @import("camera.zig");
 usingnamespace @import("transform.zig");
 usingnamespace @import("chunk/chunk.zig");
+usingnamespace @import("world/world.zig");
 
 const c = @import("c.zig");
 const glfw = @import("glfw_platform.zig");
@@ -55,6 +56,9 @@ pub fn main() !void {
     var window = glfw.createWindow(1600, 900, "ZigCraft V0.1");
     defer glfw.destoryWindow(window);
 
+    var world = World.init();
+    defer world.deinit();
+
     var png_file = @embedFile("spritesheet.png");
     var png_image = try png.Png.initMemory(png_file);
     defer png_image.deinit();
@@ -87,6 +91,7 @@ pub fn main() !void {
         opengl.init3dRendering();
         opengl.clearFramebuffer();
 
+        world.update(&camera_transform.position);
         moveCamera(1.0/60.0, &camera_transform);
 
         c.glUseProgram(shader.shader_program);

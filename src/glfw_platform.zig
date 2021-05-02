@@ -78,6 +78,9 @@ pub fn createWindow(width: i32, height: i32, title: [:0]const u8) WindowId {
             panic("Failed to initialise GLAD", .{});
         }
 
+        //Enable Vsync
+        c.glfwSwapInterval(1);
+
         var major_ver: c.GLint = undefined;
         var minor_ver: c.GLint = undefined;
         c.glGetIntegerv(c.GL_MAJOR_VERSION, &major_ver);

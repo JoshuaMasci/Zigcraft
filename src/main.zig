@@ -14,33 +14,6 @@ const glfw = @import("glfw_platform.zig");
 const opengl = @import("opengl_renderer.zig");
 const png = @import("png.zig");
 
-fn createChunkMesh(allocator: *Allocator) opengl.Mesh {
-    var chunk = ChunkData32.init();
-    generateChunk(&chunk);
-    return CreateChunkMesh(ChunkData32, allocator, &chunk);
-}
-
-fn generateChunk(chunk: *ChunkData32) void {
-    var index: vec3i = vec3i.zero();
-    while (index.x < ChunkData32.size_x) : (index.x += 1) {
-        index.y = 0;
-        while (index.y < ChunkData32.size_y) : (index.y += 1) {
-            index.z = 0;
-            while (index.z < ChunkData32.size_x) : (index.z += 1) {
-                if (index.y  == 24) {
-                    chunk.setBlock(&index, 3);
-                }
-                else if (index.y  < 24 and index.y  > 18) {
-                    chunk.setBlock(&index, 2);
-                }
-                else if (index.y  <= 18) {
-                    chunk.setBlock(&index, 1);
-                }
-            }
-        }
-    }
-}
-
 pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
 
@@ -56,7 +29,7 @@ pub fn main() !void {
     var window = glfw.createWindow(1600, 900, "ZigCraft V0.1");
     defer glfw.destoryWindow(window);
 
-    var world = World.init();
+    var world = World.init(&gpa.allocator);
     defer world.deinit();
 
     var png_file = @embedFile("spritesheet.png");
@@ -67,15 +40,12 @@ pub fn main() !void {
 
     var camera = Camera.new(64.0, 0.1, 1000.0);
     var camera_transform = Transform.zero();
+    camera_transform.move(vec3.new(0.0, 0.0, -3.0));
 
     var vertex_code = @embedFile("texture.vert.glsl");
     var fragment_code = @embedFile("texture.frag.glsl");
     var shader = opengl.Shader.init(vertex_code, fragment_code);
     defer shader.deinit();
-
-    var mesh_transform = Transform.zero(); mesh_transform.move(vec3.new(0.0, 0.0, 3.0));
-    var mesh = createChunkMesh(&gpa.allocator);
-    defer mesh.deinit();
 
     //Uniform Indexes
     var view_projection_matrix_index = c.glGetUniformLocation(shader.shader_program, "view_projection_matrix");
@@ -102,16 +72,12 @@ pub fn main() !void {
         var view_projection_matrix = mat4.mult(projection_matrix, view_matrix);
         c.glUniformMatrix4fv(view_projection_matrix_index, 1, c.GL_FALSE, view_projection_matrix.get_data());
 
-        //Model Matrix
-        var model_matrix = mesh_transform.getModelMatrix();
-        c.glUniformMatrix4fv(model_matrix_index, 1, c.GL_FALSE, model_matrix.get_data());
-        
         //Texture
         const bind_point = 0;
         png_texture.bind(bind_point);
         c.glUniform1i(texture_index, bind_point);
 
-        mesh.draw();
+        world.render(model_matrix_index);
 
         glfw.refreshWindow(window);
 

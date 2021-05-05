@@ -28,6 +28,8 @@ pub fn main() !void {
 
     var window = glfw.createWindow(1600, 900, "ZigCraft V0.1");
     defer glfw.destoryWindow(window);
+    glfw.setMouseCaptured(window, true);
+    glfw.maximizeWindow(window);
 
     var world = World.init(&gpa.allocator);
     defer world.deinit();
@@ -56,6 +58,19 @@ pub fn main() !void {
     var lastTime = glfw.getTime();
     while (glfw.shouldCloseWindow(window)) {
         glfw.update();
+
+        if (glfw.getMouseCaptured(window)) {
+            //Free mouse if escape is at all pressed
+            if (glfw.input.getKeyDown(c.GLFW_KEY_ESCAPE)) {
+                glfw.setMouseCaptured(window, false);
+            }
+        }
+        else {
+            if (glfw.input.getMousePressed(c.GLFW_MOUSE_BUTTON_LEFT)) {
+                glfw.setMouseCaptured(window, true);
+            }
+        }
+
         var windowSize = glfw.getWindowSize(window);
         opengl.setViewport(windowSize);
         opengl.init3dRendering();

@@ -11,6 +11,15 @@ fn glfwErrorCallback(err: c_int, description: [*c]const u8) callconv(.C) void {
     panic("Error: {}\n", .{@as([*:0]const u8, description)});
 }
 
+fn glfwMouseCallback(window: ?*c.GLFWwindow, button: c_int, action: c_int, mods: c_int) callconv(.C) void {
+    if (action == c.GLFW_PRESS) {
+        input.setMouseState(@intCast(usize, button), true);
+    }
+    else if (action == c.GLFW_RELEASE) {
+        input.setMouseState(@intCast(usize, button), false);
+    }
+}
+
 fn glfwKeyCallback(window: ?*c.GLFWwindow, key: c_int, scancode: c_int, action: c_int, mods: c_int) callconv(.C) void {
     if (action == c.GLFW_PRESS) {
         input.setKeyState(@intCast(usize, key), true);
@@ -19,6 +28,19 @@ fn glfwKeyCallback(window: ?*c.GLFWwindow, key: c_int, scancode: c_int, action: 
         input.setKeyState(@intCast(usize, key), false);
     }
 }
+
+fn glfwMouseMoveCallback(window: ?*c.GLFWwindow, xpos: f64, ypos: f64) callconv(.C) void {
+    const stdout = std.io.getStdOut().writer();
+    stdout.print("Mouse Move: {d},{d}\n", .{xpos, ypos}) catch {};
+
+    // if (c.glfwGetInputMode(window, c.GLFW_CURSOR) == c.GLFW_CURSOR_DISABLED) {
+        
+    // }
+    // else {
+
+    // }
+}
+
 
 //Global Variables/Functions
 var globalAllocator: GeneralPurposeAllocator = undefined;
@@ -68,9 +90,9 @@ pub fn createWindow(width: i32, height: i32, title: [:0]const u8) WindowId {
         panic("Failed to create window", .{});
     };
     c.glfwMakeContextCurrent(handle);
+    _ = c.glfwSetMouseButtonCallback(handle, glfwMouseCallback);
     _ = c.glfwSetKeyCallback(handle, glfwKeyCallback);
-
-    c.glfwMaximizeWindow(handle);
+    _ = c.glfwSetCursorPosCallback(handle, glfwMouseMoveCallback);
 
     if (nextWindowId == 0) {
         //Load Glad if this is the first window
@@ -132,34 +154,101 @@ pub fn getWindowSize(windowId: WindowId) [2]i32 {
     return size;
 }
 
-pub fn getWindowHandle(self: *Self) *c.GLFWwindow {
+pub fn maximizeWindow(windowId: WindowId) void {
+    if (windowMap.contains(windowId)) {
+        c.glfwMaximizeWindow(getWindowHandle(windowId));
+    }
+}
+
+pub fn getWindowHandle(windowId: WindowId) *c.GLFWwindow {
     if (windowMap.contains(windowId)) {
         return windowMap.get(windowId).?;
     }
-    panic("Tried to get handle for invalid window");
+    panic("Tried to get handle for invalid window", .{});
+}
+
+pub fn isWindowHovered(windowId: WindowId) bool {
+    if (windowMap.contains(windowId)) {
+        return c.glfwGetWindowAttrib(getWindowHandle(windowId), c.GLFW_HOVERED) != 0;
+    }
+    return false;
+}
+
+pub fn isWindowFocused(windowId: WindowId) bool {
+    if (windowMap.contains(windowId)) {
+        return c.glfwGetWindowAttrib(getWindowHandle(windowId), c.GLFW_FOCUSED) != 0;
+    }
+    return false;
+}
+
+pub fn setMouseCaptured(windowId: WindowId, capture: bool) void {
+    if (windowMap.contains(windowId)) {
+        var handle = getWindowHandle(windowId);
+        if (capture) {
+            c.glfwSetInputMode(handle, c.GLFW_CURSOR, c.GLFW_CURSOR_DISABLED);
+        }
+        else {
+            var size = getWindowSize(windowId);
+            c.glfwSetInputMode(handle, c.GLFW_CURSOR, c.GLFW_CURSOR_NORMAL);
+            c.glfwSetCursorPos(handle, @intToFloat(f64, size[0]) / 2.0,  @intToFloat(f64, size[1]) / 2.0);
+        }
+    }
+}
+
+pub fn getMouseCaptured(windowId: WindowId) bool {
+    if (windowMap.contains(windowId)) {
+        return c.glfwGetInputMode(getWindowHandle(windowId), c.GLFW_CURSOR) == c.GLFW_CURSOR_DISABLED;
+    }
+    return false;
 }
 
 //Input Variables/Functions
+const MouseButtonCount: usize = c.GLFW_MOUSE_BUTTON_LAST;
 const KeyboardButtonCount: usize = c.GLFW_KEY_LAST;
+
 const ButtonInput = struct {
     current_state: bool = false,
     prev_state: bool = false,
 };
+
 pub var input = struct {
     const Self = @This();
 
+    mouse_buttons: [MouseButtonCount]ButtonInput,
     keyboard_buttons: [KeyboardButtonCount]ButtonInput,
+    mouse_axes: [2]f32,
 
     pub fn init() Self {
         return Self {
+            .mouse_buttons = [_]ButtonInput{.{}} ** MouseButtonCount,
             .keyboard_buttons = [_]ButtonInput{.{}} ** KeyboardButtonCount,
+            .mouse_axes = [_]f32{ 0.0, 0.0 },
         };
     }
 
     pub fn update(self: *Self) void {
+        for (self.mouse_buttons) |*button| {
+            button.prev_state = button.current_state;
+        }
+
         for (self.keyboard_buttons) |*button| {
             button.prev_state = button.current_state;
         }
+
+        self.mouse_axes = [_]f32{ 0.0, 0.0 };
+    }
+
+    pub fn setMouseState(self: *Self, mouse_button: usize, state: bool) void {
+        self.mouse_buttons[mouse_button].current_state = state;
+    }
+
+    pub fn getMouseDown(self: *Self, mouse_button: usize) bool {
+        return self.mouse_buttons[mouse_button].current_state == true;
+    }
+
+    pub fn getMousePressed(self: *Self, mouse_button: usize) bool {
+        var button = self.mouse_buttons[mouse_button];
+        return button.current_state == true and button.prev_state == false;
     }
 
     pub fn setKeyState(self: *Self, key: usize, state: bool) void {

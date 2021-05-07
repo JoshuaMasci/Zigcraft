@@ -30,17 +30,24 @@ fn glfwKeyCallback(window: ?*c.GLFWwindow, key: c_int, scancode: c_int, action: 
 }
 
 fn glfwMouseMoveCallback(window: ?*c.GLFWwindow, xpos: f64, ypos: f64) callconv(.C) void {
-    const stdout = std.io.getStdOut().writer();
-    stdout.print("Mouse Move: {d},{d}\n", .{xpos, ypos}) catch {};
 
-    // if (c.glfwGetInputMode(window, c.GLFW_CURSOR) == c.GLFW_CURSOR_DISABLED) {
-        
-    // }
-    // else {
-
-    // }
+    if (window == capturedWindow) {
+        input.mouse_axes[0] = @floatCast(f32, xpos);
+        input.mouse_axes[1] = @floatCast(f32, ypos);
+    }
+    else {
+        // Set mouse pos
+    }
 }
 
+fn glfwMouseEnteredCallback(window: ?*c.GLFWwindow, entered: c_int) callconv(.C) void {
+    //If mouse has left current capture area
+    var focused = c.glfwGetWindowAttrib(window, c.GLFW_FOCUSED);
+    if (capturedWindow == window and entered == 0 and focused == 0) {
+        c.glfwSetInputMode(window, c.GLFW_CURSOR, c.GLFW_CURSOR_NORMAL);
+        capturedWindow = null;
+    }
+}
 
 //Global Variables/Functions
 var globalAllocator: GeneralPurposeAllocator = undefined;
@@ -72,6 +79,10 @@ pub fn deinit() void {
 }
 
 pub fn update() void {
+     if (capturedWindow) |windowHandle| {
+        c.glfwSetCursorPos(windowHandle, 0.0, 0.0);
+     }
+
     input.update();
     c.glfwPollEvents();
 }
@@ -93,6 +104,7 @@ pub fn createWindow(width: i32, height: i32, title: [:0]const u8) WindowId {
     _ = c.glfwSetMouseButtonCallback(handle, glfwMouseCallback);
     _ = c.glfwSetKeyCallback(handle, glfwKeyCallback);
     _ = c.glfwSetCursorPosCallback(handle, glfwMouseMoveCallback);
+    _ = c.glfwSetCursorEnterCallback(handle, glfwMouseEnteredCallback);
 
     if (nextWindowId == 0) {
         //Load Glad if this is the first window
@@ -186,21 +198,28 @@ pub fn setMouseCaptured(windowId: WindowId, capture: bool) void {
         var handle = getWindowHandle(windowId);
         if (capture) {
             c.glfwSetInputMode(handle, c.GLFW_CURSOR, c.GLFW_CURSOR_DISABLED);
+            c.glfwSetCursorPos(handle, 0.0, 0.0);
+            capturedWindow = handle;
         }
         else {
             var size = getWindowSize(windowId);
             c.glfwSetInputMode(handle, c.GLFW_CURSOR, c.GLFW_CURSOR_NORMAL);
             c.glfwSetCursorPos(handle, @intToFloat(f64, size[0]) / 2.0,  @intToFloat(f64, size[1]) / 2.0);
+            capturedWindow = null;
         }
     }
 }
 
 pub fn getMouseCaptured(windowId: WindowId) bool {
-    if (windowMap.contains(windowId)) {
-        return c.glfwGetInputMode(getWindowHandle(windowId), c.GLFW_CURSOR) == c.GLFW_CURSOR_DISABLED;
+    if (capturedWindow) |windowHandle| {
+        return true;
     }
-    return false;
+    else {
+        return false;
+    }
 }
+
+var capturedWindow: ?*c.GLFWwindow = null;
 
 //Input Variables/Functions
 const MouseButtonCount: usize = c.GLFW_MOUSE_BUTTON_LAST;
@@ -250,6 +269,11 @@ pub var input = struct {
         var button = self.mouse_buttons[mouse_button];
         return button.current_state == true and button.prev_state == false;
     }
+
+    pub fn getMouseAxes(self: *Self) [2]f32 {
+        return self.mouse_axes;
+    }
+
 
     pub fn setKeyState(self: *Self, key: usize, state: bool) void {
         self.keyboard_buttons[key].current_state = state;

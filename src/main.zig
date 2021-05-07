@@ -29,7 +29,7 @@ pub fn main() !void {
     var window = glfw.createWindow(1600, 900, "ZigCraft V0.1");
     defer glfw.destoryWindow(window);
     glfw.setMouseCaptured(window, true);
-    glfw.maximizeWindow(window);
+    //glfw.maximizeWindow(window);
 
     var world = World.init(&gpa.allocator);
     defer world.deinit();
@@ -70,6 +70,9 @@ pub fn main() !void {
                 glfw.setMouseCaptured(window, true);
             }
         }
+
+        //var mouse_axes = glfw.input.getMouseAxes();
+        //try stdout.print("Mouse Axes: ({d}, {d})\n", .{mouse_axes[0], mouse_axes[1]});
 
         var windowSize = glfw.getWindowSize(window);
         opengl.setViewport(windowSize);
@@ -149,8 +152,11 @@ fn moveCamera(timeStep: f32, transform: *Transform) void {
             transform.move(forward.scale(forwardMove * moveSpeed * timeStep));
         }
 
+        var mouse_axes = glfw.input.getMouseAxes();
+        const mouse_sensitivity: f32 = 25.0;
+
         {
-            var pitchRotate: f32 = 0.0;
+            var pitchRotate: f32 = mouse_axes[1] / mouse_sensitivity;
             if(glfw.input.getKeyDown(c.GLFW_KEY_UP)) {
                 pitchRotate += 1.0;
             }
@@ -161,7 +167,7 @@ fn moveCamera(timeStep: f32, transform: *Transform) void {
         }
 
         {
-            var yawRotate: f32 = 0.0;
+            var yawRotate: f32 = -mouse_axes[0] / mouse_sensitivity;
             if(glfw.input.getKeyDown(c.GLFW_KEY_LEFT)) {
                 yawRotate += 1.0;
             }

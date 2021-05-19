@@ -9,6 +9,9 @@ usingnamespace @import("transform.zig");
 usingnamespace @import("chunk/chunk.zig");
 usingnamespace @import("world/world.zig");
 
+usingnamespace @import("collision/aabb.zig");
+usingnamespace @import("test_box.zig");
+
 const c = @import("c.zig");
 const glfw = @import("glfw_platform.zig");
 const opengl = @import("opengl_renderer.zig");
@@ -28,11 +31,8 @@ pub fn main() !void {
 
     var window = glfw.createWindow(1600, 900, "ZigCraft V0.1");
     defer glfw.destoryWindow(window);
-    glfw.setMouseCaptured(window, true);
-    //glfw.maximizeWindow(window);
-
-    var world = World.init(&gpa.allocator);
-    defer world.deinit();
+    //glfw.setMouseCaptured(window, true);
+    glfw.maximizeWindow(window);
 
     var png_file = @embedFile("spritesheet.png");
     var png_image = try png.Png.initMemory(png_file);
@@ -42,17 +42,32 @@ pub fn main() !void {
 
     var camera = Camera.new(64.0, 0.1, 1000.0);
     var camera_transform = Transform.zero();
-    camera_transform.move(vec3.new(0.0, 0.0, -3.0));
+    camera_transform.move(vec3.new(0.0, 1.0, -5.0));
 
-    var vertex_code = @embedFile("texture.vert.glsl");
-    var fragment_code = @embedFile("texture.frag.glsl");
-    var shader = opengl.Shader.init(vertex_code, fragment_code);
-    defer shader.deinit();
+    var texture_vertex_code = @embedFile("texture.vert.glsl");
+    var texture_fragment_code = @embedFile("texture.frag.glsl");
+    var texture_shader = opengl.Shader.init(texture_vertex_code, texture_fragment_code);
+    defer texture_shader.deinit();
+
+    var color_vertex_code = @embedFile("color.vert.glsl");
+    var color_fragment_code = @embedFile("color.frag.glsl");
+    var color_shader = opengl.Shader.init(color_vertex_code, color_fragment_code);
+    defer color_shader.deinit();
 
     //Uniform Indexes
-    var view_projection_matrix_index = c.glGetUniformLocation(shader.shader_program, "view_projection_matrix");
-    var model_matrix_index = c.glGetUniformLocation(shader.shader_program, "model_matrix");
-    var texture_index = c.glGetUniformLocation(shader.shader_program, "block_texture");
+    var view_projection_matrix_index = c.glGetUniformLocation(texture_shader.shader_program, "view_projection_matrix");
+    var model_matrix_index = c.glGetUniformLocation(texture_shader.shader_program, "model_matrix");
+    var texture_index = c.glGetUniformLocation(texture_shader.shader_program, "block_texture");
+
+    //World stuff
+    var world = World.init(&gpa.allocator);
+    defer world.deinit();
+
+    var test_box1 = TestBox.init(vec3.new(0.0, 3.0, 0.0), vec3.one(), vec3.new(1.0, 0.0, 0.0));
+    defer test_box1.deinit();
+
+    var test_box2 = TestBox.init(vec3.zero(), vec3.one().scale(1.2), vec3.one());
+    defer test_box2.deinit();
 
     var frameCount: u32 = 0;
     var lastTime = glfw.getTime();
@@ -71,38 +86,54 @@ pub fn main() !void {
             }
         }
 
-        //var mouse_axes = glfw.input.getMouseAxes();
-        //try stdout.print("Mouse Axes: ({d}, {d})\n", .{mouse_axes[0], mouse_axes[1]});
-
         var windowSize = glfw.getWindowSize(window);
         opengl.setViewport(windowSize);
         opengl.init3dRendering();
         opengl.clearFramebuffer();
 
-        world.update(&camera_transform.position);
+        //world.update(&camera_transform.position);
         moveCamera(1.0/60.0, &camera_transform);
 
-        c.glUseProgram(shader.shader_program);
+        test_box1.aabb.position = test_box1.aabb.position.add(vec3.new(0.0, -0.1 / 60.0, 0.0));
+        test_box1.update(&test_box2);
+
+        c.glUseProgram(texture_shader.shader_program);
 
         //View Projection Matrix
         var projection_matrix = camera.getPerspective(@intToFloat(f32, windowSize[0]) / @intToFloat(f32, windowSize[1]));
         var view_matrix = camera_transform.getViewMatrix();
         var view_projection_matrix = mat4.mult(projection_matrix, view_matrix);
-        c.glUniformMatrix4fv(view_projection_matrix_index, 1, c.GL_FALSE, view_projection_matrix.get_data());
 
-        //Texture
-        const bind_point = 0;
-        png_texture.bind(bind_point);
-        c.glUniform1i(texture_index, bind_point);
+        //World render
+        {
+            c.glUniformMatrix4fv(view_projection_matrix_index, 1, c.GL_FALSE, view_projection_matrix.get_data());
 
-        world.render(model_matrix_index);
+            //Texture
+            const bind_point = 0;
+            png_texture.bind(bind_point);
+            c.glUniform1i(texture_index, bind_point);
+
+            //world.render(model_matrix_index);
+        }
+
+
+        //TestBox Renders
+        {
+            var box_model_index = c.glGetUniformLocation(color_shader.shader_program, "model_matrix");
+            var box_color_index = c.glGetUniformLocation(color_shader.shader_program, "color");
+
+            c.glUseProgram(color_shader.shader_program);
+            c.glUniformMatrix4fv( c.glGetUniformLocation(color_shader.shader_program, "view_projection_matrix"), 1, c.GL_FALSE, view_projection_matrix.get_data());
+            test_box1.render(box_model_index, box_color_index);
+            test_box2.render(box_model_index, box_color_index);
+        }
 
         glfw.refreshWindow(window);
 
         frameCount += 1;
         var currentTime = glfw.getTime();
         if ((currentTime - 1.0) > lastTime) {
-            try stdout.print("FPS: {}\n", .{frameCount});
+            //try stdout.print("FPS: {}\n", .{frameCount});
             frameCount = 0;
             lastTime = currentTime;
         }

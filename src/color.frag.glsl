@@ -1,9 +1,9 @@
 #version 330 core
 out vec4 FragColor;
 
-in vec3 out_color;
+uniform vec3 color;
 
 void main()
 {
-    FragColor = texture(ourTexture, out_color.xy);
+    FragColor = vec4(color, 1.0);
 } 

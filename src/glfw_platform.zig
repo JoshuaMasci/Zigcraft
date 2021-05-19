@@ -30,7 +30,6 @@ fn glfwKeyCallback(window: ?*c.GLFWwindow, key: c_int, scancode: c_int, action: 
 }
 
 fn glfwMouseMoveCallback(window: ?*c.GLFWwindow, xpos: f64, ypos: f64) callconv(.C) void {
-
     if (window == capturedWindow) {
         input.mouse_axes[0] = @floatCast(f32, xpos);
         input.mouse_axes[1] = @floatCast(f32, ypos);

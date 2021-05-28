@@ -7,6 +7,7 @@ usingnamespace @import("../chunk/chunk.zig");
 const c = @import("../c.zig");
 const opengl = @import("../opengl_renderer.zig");
 const glfw = @import("../glfw_platform.zig");
+usingnamespace @import("../test_box.zig");
 
 //TODO 3D chunk
 pub const ChunkPos = Vec2(i32);
@@ -33,7 +34,7 @@ pub const World = struct {
     pub fn init(allocator: *std.mem.Allocator) Self {
         var chunk_map = std.AutoHashMap(ChunkPos, ChunkInfo).init(allocator);
 
-        const CHUNK_SIZE = 10;
+        const CHUNK_SIZE = 1;
         var index = ChunkPos.zero();
         while (index.x < CHUNK_SIZE) : (index.x += 1) {
             index.y = 0;
@@ -88,6 +89,12 @@ pub const World = struct {
             entry.value.mesh.draw();
         }
     }
+
+    // pub fn calcCollision(self: *Self, player: *TestBox) void {
+    //     var iterator = self.chunk_map.iterator();
+    //     while (iterator.next()) |entry| {
+    //     }
+    // }
 };
 
 fn generateChunk(chunk: *ChunkData32) void {
@@ -110,3 +117,22 @@ fn generateChunk(chunk: *ChunkData32) void {
         }
     }
 }
+
+// fn testCollision(chunk: *ChunkData32) vec3 {
+//     var offset = vec3.zero();
+//     var aabb = Aabb.init(vec3.zero(), vec3.one())
+//     var index: vec3i = vec3i.zero();
+//     while (index.x < ChunkData32.size_x) : (index.x += 1) {
+//         index.y = 0;
+//         while (index.y < ChunkData32.size_y) : (index.y += 1) {
+//             index.z = 0;
+//             while (index.z < ChunkData32.size_x) : (index.z += 1) {
+//                 if (chunk.getBlock(index) != 0) {
+                    
+//                 }
+//             }
+//         }
+//     }
+
+//     return offset;
+// }

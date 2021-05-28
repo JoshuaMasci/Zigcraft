@@ -63,6 +63,31 @@ pub fn main() !void {
     var world = World.init(&gpa.allocator);
     defer world.deinit();
 
+    var chunk = TestChunk.init(vec3i.zero());
+    defer chunk.deinit();
+    {
+        var index: vec3i = vec3i.zero();
+        while (index.x < TestChunk.Size.x) : (index.x += 1) {
+            index.y = 0;
+            while (index.y < TestChunk.Size.y) : (index.y += 1) {
+                index.z = 0;
+                while (index.z < TestChunk.Size.z) : (index.z += 1) {
+                    if (index.y  == 24) {
+                        chunk.setBlock(&index, 3);
+                    }
+                    else if (index.y  < 24 and index.y  > 18) {
+                        chunk.setBlock(&index, 2);
+                    }
+                    else if (index.y  <= 18) {
+                        chunk.setBlock(&index, 1);
+                    }
+                }
+            }
+        }
+    }
+
+    chunk.generateChunkMesh(&gpa.allocator);
+
     var test_box1 = TestBox.init(vec3.new(0.0, 3.0, 0.0), vec3.one(), vec3.new(1.0, 0.0, 0.0));
     defer test_box1.deinit();
 
@@ -113,6 +138,7 @@ pub fn main() !void {
             png_texture.bind(bind_point);
             c.glUniform1i(texture_index, bind_point);
 
+            chunk.render(model_matrix_index);
             //world.render(model_matrix_index);
         }
 

@@ -91,13 +91,13 @@ pub const Mesh = struct {
         };
     }
 
-    pub fn deinit(self: *Self) void {
+    pub fn deinit(self: *const Self) void {
         c.glDeleteVertexArrays(1, &self.vao);
         c.glDeleteBuffers(1, &self.vertex_buffer);
         c.glDeleteBuffers(1, &self.index_buffer);
     }
 
-    pub fn draw(self: *Self) void {
+    pub fn draw(self: *const Self) void {
         //Setup
         c.glBindVertexArray(self.vao);
         c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, self.index_buffer);
